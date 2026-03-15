@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FolioAI — Portfolio in 60 Seconds</title>
+<meta name="description" content="Chat with AI, get a stunning portfolio website, deploy it live — all before your next interview. Built for Indian placement season." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0f0d0a;
+    --ink2: #3a3730;
+    --ink3: #7a7570;
+    --surface: #faf8f3;
+    --card: #ffffff;
+    --accent: #e85d2f;
+    --accent2: #f5a623;
+    --border: rgba(15,13,10,0.1);
+    --border2: rgba(15,13,10,0.06);
+    --green: #1a7a4a;
+    --green-bg: #e8f5ee;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #f0ece4;
+      --ink2: #c8c4bc;
+      --ink3: #888480;
+      --surface: #0f0d0a;
+      --card: #1a1815;
+      --border: rgba(240,236,228,0.1);
+      --border2: rgba(240,236,228,0.05);
+      --green: #4ade80;
+      --green-bg: #0f2d1c;
+    }
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 2rem;
+    border-bottom: 0.5px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: var(--surface);
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.2rem;
+    letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink); text-decoration: none;
+  }
+  .logo-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); display: inline-block;
+  }
+  .nav-badge {
+    font-size: 12px; font-weight: 500;
+    background: var(--green-bg); color: var(--green);
+    padding: 4px 12px; border-radius: 100px;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 5rem 2rem 4rem;
+    max-width: 800px; margin: 0 auto;
+    text-align: center;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 500; color: var(--ink3);
+    background: var(--card); border: 0.5px solid var(--border);
+    padding: 6px 14px; border-radius: 100px;
+    margin-bottom: 2rem;
+  }
+  .hero-tag span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); display: inline-block;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: clamp(2.4rem, 7vw, 4.2rem);
+    line-height: 1.05; letter-spacing: -0.03em;
+    color: var(--ink); margin-bottom: 1.25rem;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+
+  .hero-sub {
+    font-size: 1.1rem; color: var(--ink2);
+    max-width: 520px; margin: 0 auto 2.5rem;
+    font-weight: 300; line-height: 1.7;
+  }
+
+  .waitlist-form {
+    display: flex; gap: 10px; max-width: 460px;
+    margin: 0 auto 1rem;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .waitlist-form input[type="email"] {
+    flex: 1; min-width: 220px;
+    padding: 14px 18px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 12px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .waitlist-form input[type="email"]:focus { border-color: var(--accent); }
+  .waitlist-form input[type="email"]::placeholder { color: var(--ink3); }
+  .btn-primary {
+    padding: 14px 24px;
+    background: var(--accent); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+    border: none; border-radius: 12px; cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s; white-space: nowrap;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(0.98); }
+  .hero-note { font-size: 13px; color: var(--ink3); }
+
+  .success-msg {
+    display: none; text-align: center; padding: 0.75rem;
+    font-size: 14px; color: var(--green); font-weight: 500;
+  }
+
+  /* SOCIAL PROOF */
+  .social-proof {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1.5rem; flex-wrap: wrap;
+    padding: 2rem;
+    border-top: 0.5px solid var(--border2);
+    border-bottom: 0.5px solid var(--border2);
+    margin: 3rem 0;
+  }
+  .proof-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink3); }
+  .proof-num { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--ink); }
+  .proof-sep { color: var(--border); }
+
+  /* DEMO */
+  .demo-wrap { max-width: 860px; margin: 0 auto; padding: 0 2rem 4rem; }
+  .section-label {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink3); margin-bottom: 0.75rem;
+  }
+  .demo-card {
+    background: var(--card); border: 0.5px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+  }
+  .demo-topbar {
+    padding: 12px 16px; border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .d1 { background: #ff5f56; } .d2 { background: #ffbd2e; } .d3 { background: #27c93f; }
+  .demo-topbar-title { flex: 1; text-align: center; font-size: 13px; color: var(--ink3); }
+  .demo-body { display: flex; min-height: 360px; }
+  .demo-chat {
+    width: 340px; flex-shrink: 0;
+    border-right: 0.5px solid var(--border);
+    padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--surface);
+  }
+  .chat-header { font-size: 12px; font-weight: 500; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .msg { padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; max-width: 90%; }
+  .msg-user { background: var(--accent); color: #fff; align-self: flex-end; border-radius: 14px 14px 4px 14px; }
+  .msg-ai { background: var(--card); color: var(--ink); border: 0.5px solid var(--border); align-self: flex-start; border-radius: 14px 14px 14px 4px; }
+  .typing { display: flex; gap: 4px; padding: 12px 14px; background: var(--card); border-radius: 14px; width: fit-content; border: 0.5px solid var(--border); }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--ink3); animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+  .demo-preview { flex: 1; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  .preview-header-bar { height: 40px; background: var(--surface); border-radius: 8px; border: 0.5px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+  .preview-nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .preview-hero-block { background: linear-gradient(135deg, #0f0d0a 0%, #2a1f15 100%); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 10px; }
+  .ph-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; color: #fff; }
+  .ph-role { font-size: 13px; color: rgba(255,255,255,0.6); }
+  .ph-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ph-tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; border: 0.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+  .ph-tag-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .preview-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .preview-mini-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .pmc-label { font-size: 11px; color: var(--ink3); margin-bottom: 4px; }
+  .pmc-val { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .deploy-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--accent); color: #fff; border-radius: 10px; padding: 10px; font-size: 14px; font-weight: 500; }
+
+  /* STATS */
+  .stats-banner { background: var(--ink); padding: 3rem 2rem; display: flex; justify-content: center; flex-wrap: wrap; gap: 3rem; margin: 0 0 5rem; }
+  .stat-item { text-align: center; }
+  .stat-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2.2rem; color: var(--accent2); display: block; }
+  .stat-label { font-size: 13px; color: rgba(255,255,255,0.5); }
+
+  /* FEATURES */
+  .features-wrap { max-width: 860px; margin: 0 auto; padding: 0 2rem 5rem; }
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 1.5rem; }
+  .feat-card { background: var(--card); border: 0.5px solid var(--border); border-radius: 16px; padding: 1.5rem; transition: transform 0.2s; }
+  .feat-card:hover { transform: translateY(-3px); }
+  .feat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 1rem; }
+  .fi-orange { background: #fff0eb; } .fi-blue { background: #e8f0fb; } .fi-green { background: #e8f5ee; } .fi-purple { background: #f0ecfe; }
+  .feat-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 0.4rem; color: var(--ink); }
+  .feat-desc { font-size: 14px; color: var(--ink3); line-height: 1.6; }
+
+  /* HOW IT WORKS */
+  .how-wrap { max-width: 860px; margin: 0 auto; padding: 0 2rem 5rem; }
+  .steps-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0; margin-top: 2rem; position: relative; }
+  .step { padding: 1.5rem 1rem; text-align: center; position: relative; }
+  .step:not(:last-child)::after { content: '→'; position: absolute; right: -8px; top: 50%; transform: translateY(-50%); color: var(--border); font-size: 1.2rem; }
+  .step-num { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; }
+  .step-title { font-weight: 500; font-size: 14px; margin-bottom: 0.3rem; color: var(--ink); }
+  .step-desc { font-size: 13px; color: var(--ink3); }
+
+  /* PRICING */
+  .pricing-wrap { max-width: 700px; margin: 0 auto; padding: 0 2rem 6rem; }
+  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 1.5rem; }
+  .price-card { background: var(--card); border: 0.5px solid var(--border); border-radius: 20px; padding: 2rem 1.5rem; }
+  .price-card.featured { border: 2px solid var(--accent); }
+  .price-badge { display: inline-block; font-size: 11px; font-weight: 500; background: #fff0eb; color: var(--accent); padding: 3px 10px; border-radius: 100px; margin-bottom: 1rem; }
+  .price-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.25rem; color: var(--ink); }
+  .price-amount { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; color: var(--ink); }
+  .price-period { font-size: 13px; color: var(--ink3); }
+  .price-features { list-style: none; margin-top: 1.25rem; display: flex; flex-direction: column; gap: 8px; }
+  .price-features li { font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 8px; }
+  .price-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+  .price-btn { margin-top: 1.5rem; width: 100%; padding: 12px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--ink); transition: all 0.15s; }
+  .price-btn:hover { background: var(--surface); }
+  .price-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .price-btn.primary:hover { opacity: 0.9; }
+
+  /* CTA */
+  .cta-section { background: var(--ink); padding: 5rem 2rem; text-align: center; margin: 0 0 4rem; }
+  .cta-section h2 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(1.8rem, 5vw, 3rem); color: #fff; line-height: 1.15; margin-bottom: 1rem; }
+  .cta-section h2 em { color: var(--accent2); font-style: italic; }
+  .cta-section p { color: rgba(255,255,255,0.5); margin-bottom: 2rem; }
+  .cta-form { display: flex; gap: 10px; max-width: 420px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+  .cta-form input { flex: 1; min-width: 200px; padding: 14px 18px; font-family: 'DM Sans', sans-serif; font-size: 15px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; outline: none; }
+  .cta-form input::placeholder { color: rgba(255,255,255,0.4); }
+  .cta-form input:focus { border-color: var(--accent2); }
+  .cta-form .btn-primary { background: var(--accent2); color: #0f0d0a; }
+
+  /* FOOTER */
+  footer { border-top: 0.5px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; font-size: 13px; color: var(--ink3); max-width: 860px; margin: 0 auto; }
+
+  @media (max-width: 600px) {
+    .demo-body { flex-direction: column; }
+    .demo-chat { width: 100%; border-right: none; border-bottom: 0.5px solid var(--border); }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .step:not(:last-child)::after { display: none; }
+    nav { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo"><span class="logo-dot"></span>FolioAI</a>
+  <span class="nav-badge">Early Access Open</span>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag"><span></span>Built for Indian placement season</div>
+  <h1>Your portfolio,<br />ready in <em>60 seconds.</em></h1>
+  <p class="hero-sub">Chat with AI, get a stunning portfolio website, deploy it live — all before your next interview. No coding. No templates to struggle with.</p>
+  <div class="waitlist-form">
+    <input type="email" id="hero-email" placeholder="your.email@college.edu" />
+    <button class="btn-primary" onclick="joinWaitlist('hero-email','hero-success')">Join Waitlist →</button>
+  </div>
+  <div class="success-msg" id="hero-success">You're on the list! We'll reach out before placement season. 🎉</div>
+  <p class="hero-note">Free during beta · No credit card required · Deployed on your own link</p>
+</section>
+
+<!-- SOCIAL PROOF -->
+<div class="social-proof">
+  <div class="proof-item"><span class="proof-num">1.5M+</span><span>engineering grads per year</span></div>
+  <span class="proof-sep">|</span>
+  <div class="proof-item"><span class="proof-num">&lt;3%</span><span>have a portfolio website</span></div>
+  <span class="proof-sep">|</span>
+  <div class="proof-item"><span class="proof-num">10×</span><span>more interview callbacks with a portfolio</span></div>
+</div>
+
+<!-- DEMO -->
+<div class="demo-wrap">
+  <div class="section-label">See it in action</div>
+  <div class="demo-card">
+    <div class="demo-topbar">
+      <div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div>
+      <span class="demo-topbar-title">FolioAI — Chat to Portfolio</span>
+    </div>
+    <div class="demo-body">
+      <div class="demo-chat">
+        <div class="chat-header">AI Chat</div>
+        <div class="msg msg-user">I'm a final year CSE student at VIT. I've done 2 internships and built a ML project predicting stock prices.</div>
+        <div class="msg msg-ai">Got it! I'll create a clean tech-focused portfolio. What template vibe — minimal dark, colorful, or professional light?</div>
+        <div class="msg msg-user">Minimal dark, and include my GitHub stats.</div>
+        <div class="msg msg-ai">Portfolio generated! I've added your projects, GitHub stats, and a contact form. Ready to deploy?</div>
+        <div class="typing"><span></span><span></span><span></span></div>
+      </div>
+      <div class="demo-preview">
+        <div class="preview-header-bar">
+          <div class="preview-nav-dot"></div><div class="preview-nav-dot"></div>
+          <span style="flex:1;font-size:12px;color:var(--ink3);text-align:center;background:var(--surface);border-radius:4px;padding:2px 8px;">arjun-sharma.folio.ai</span>
+        </div>
+        <div class="preview-hero-block">
+          <div class="ph-name">Arjun Sharma</div>
+          <div class="ph-role">CSE Final Year · VIT Vellore</div>
+          <div class="ph-tags">
+            <span class="ph-tag ph-tag-accent">Machine Learning</span>
+            <span class="ph-tag">React</span>
+            <span class="ph-tag">Python</span>
+            <span class="ph-tag">2× Intern</span>
+          </div>
+        </div>
+        <div class="preview-cards">
+          <div class="preview-mini-card"><div class="pmc-label">GitHub commits</div><div class="pmc-val">1,247</div></div>
+          <div class="preview-mini-card"><div class="pmc-label">Projects live</div><div class="pmc-val">6</div></div>
+        </div>
+        <div class="deploy-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          Deploy live in one click
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-banner">
+  <div class="stat-item"><span class="stat-num">60s</span><span class="stat-label">avg time to portfolio</span></div>
+  <div class="stat-item"><span class="stat-num">8+</span><span class="stat-label">placement-ready templates</span></div>
+  <div class="stat-item"><span class="stat-num">Oct–Jan</span><span class="stat-label">placement season target</span></div>
+  <div class="stat-item"><span class="stat-num">₹0</span><span class="stat-label">to get started</span></div>
+</div>
+
+<!-- FEATURES -->
+<div class="features-wrap">
+  <div class="section-label">Everything you need</div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon fi-orange">💬</div>
+      <div class="feat-title">AI chat interface</div>
+      <div class="feat-desc">Just describe yourself. The AI asks the right questions and builds your portfolio as you chat.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon fi-blue">📄</div>
+      <div class="feat-title">Resume import</div>
+      <div class="feat-desc">Upload your resume or paste your LinkedIn URL. We auto-fill your projects, skills, and experience.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon fi-green">🚀</div>
+      <div class="feat-title">One-click deploy</div>
+      <div class="feat-desc">Your portfolio goes live on a shareable link instantly. Custom domain support included.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon fi-purple">🎨</div>
+      <div class="feat-title">Placement templates</div>
+      <div class="feat-desc">Templates designed specifically for TCS, Infosys, startups, and product companies hiring.</div>
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="how-wrap">
+  <div class="section-label">3 steps to placed</div>
+  <div class="steps-row">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-title">Chat with AI</div>
+      <div class="step-desc">Tell it about yourself — projects, skills, internships</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-title">Pick a template</div>
+      <div class="step-desc">Choose from placement-ready designs</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-title">Deploy & share</div>
+      <div class="step-desc">Get your link, add it to your resume</div>
+    </div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<div class="pricing-wrap">
+  <div class="section-label" style="text-align:center;">Simple pricing</div>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-name">Free</div>
+      <div><span class="price-amount">₹0</span></div>
+      <div class="price-period">Forever free</div>
+      <ul class="price-features">
+        <li>1 portfolio site</li>
+        <li>AI chat generation</li>
+        <li>folio.ai subdomain</li>
+        <li>3 templates</li>
+      </ul>
+      <button class="price-btn" onclick="document.getElementById('hero-email').focus(); window.scrollTo({top:0,behavior:'smooth'})">Get started free</button>
+    </div>
+    <div class="price-card featured">
+      <span class="price-badge">Most popular</span>
+      <div class="price-name">Pro</div>
+      <div><span class="price-amount">₹299</span><span class="price-period">/month</span></div>
+      <div class="price-period">Cancel anytime</div>
+      <ul class="price-features">
+        <li>Unlimited portfolios</li>
+        <li>Custom domain</li>
+        <li>Resume PDF import</li>
+        <li>All 8+ templates</li>
+        <li>GitHub stats widget</li>
+        <li>Analytics dashboard</li>
+      </ul>
+      <button class="price-btn primary" onclick="document.getElementById('hero-email').focus(); window.scrollTo({top:0,behavior:'smooth'})">Join waitlist →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Placement season is<br /><em>coming fast.</em></h2>
+  <p>Get notified when we launch. First 500 users get Pro for free.</p>
+  <div class="cta-form">
+    <input type="email" id="cta-email" placeholder="your@email.com" />
+    <button class="btn-primary" onclick="joinWaitlist('cta-email','cta-success')">Claim spot →</button>
+  </div>
+  <div class="success-msg" id="cta-success" style="color:#f5a623;">You're in! We'll ping you before launch. 🚀</div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <a href="#" class="logo" style="font-size:1rem;"><span class="logo-dot"></span>FolioAI</a>
+  <span>Built for Indian placement season · © 2026</span>
+  <span style="color:var(--accent);">Early access open →</span>
+</footer>
+
+<script>
+  function joinWaitlist(inputId, successId) {
+    const input = inputId ? document.getElementById(inputId) : null;
+    const email = input ? input.value.trim() : '';
+    if (inputId && (!email || !email.includes('@'))) {
+      if (input) { input.style.borderColor = '#e85d2f'; input.focus(); }
+      return;
+    }
+    if (successId) {
+      const msg = document.getElementById(successId);
+      if (msg) { msg.style.display = 'block'; }
+    }
+    if (input) { input.value = ''; input.style.borderColor = ''; }
+    // TODO: Replace this with your actual email capture (Tally, Mailchimp, Supabase, etc.)
+    console.log('Waitlist signup:', email);
+  }
+</script>
+</body>
+</html>
