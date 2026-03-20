@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/folioai-landing.html" }
+    { "source": "/(.*)", "destination": "/Demo/folioai-landing.html" }
   ]
 }
