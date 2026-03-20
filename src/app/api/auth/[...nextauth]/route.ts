@@ -1,20 +1,7 @@
-import { NextResponse } from "next/server";
+import NextAuth from "next-auth";
 
-function notImplemented() {
-  return NextResponse.json(
-    {
-      message: "Auth is scaffolded but not implemented yet.",
-    },
-    {
-      status: 501,
-    },
-  );
-}
+import { authOptions } from "@/lib/auth/options";
 
-export async function GET() {
-  return notImplemented();
-}
+const handler = NextAuth(authOptions);
 
-export async function POST() {
-  return notImplemented();
-}
+export { handler as GET, handler as POST };
