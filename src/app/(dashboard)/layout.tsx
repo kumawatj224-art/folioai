@@ -1,15 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { getCurrentSession } from "@/lib/auth/session";
 import { isNewAppEnabled } from "@/lib/env/feature-flags";
 
 type DashboardLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!isNewAppEnabled()) {
     redirect("/index.html");
+  }
+
+  const session = await getCurrentSession();
+
+  if (!session?.user) {
+    redirect("/mvp1-preview");
   }
 
   return (
@@ -27,7 +35,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Link href="/" className="rounded-full border border-[var(--border)] px-4 py-2">
               Back to home
             </Link>
-            <span className="rounded-full bg-white px-4 py-2 text-[var(--muted)]">Auth pending</span>
+            <span className="rounded-full bg-white px-4 py-2 text-[var(--muted)]">
+              {session.user.email}
+            </span>
+            <SignOutButton />
           </div>
         </header>
 

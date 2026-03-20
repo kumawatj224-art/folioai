@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Manrope, Sora } from "next/font/google";
 
 import "./globals.css";
 
-const headingFont = Plus_Jakarta_Sans({
+const headingFont = Sora({
   variable: "--font-heading",
   subsets: ["latin"],
 });
 
-const bodyFont = Inter({
+const bodyFont = Manrope({
   variable: "--font-body",
   subsets: ["latin"],
 });

@@ -1,6 +1,9 @@
+import { getCurrentSession } from "@/lib/auth/session";
 import { EmptyState } from "@/components/ui/empty-state";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await getCurrentSession();
+
   return (
     <main className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
       <section className="rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] backdrop-blur">
@@ -8,7 +11,7 @@ export default function DashboardPage() {
           <div>
             <p className="text-sm text-[var(--muted)]">MVP1</p>
             <h2 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-tight">
-              Your portfolios
+              Welcome, {session?.user?.name ?? "there"}
             </h2>
           </div>
           <button
@@ -29,7 +32,7 @@ export default function DashboardPage() {
       <aside className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-strong)] p-6 shadow-[var(--shadow)]">
         <p className="text-sm text-[var(--muted)]">Route status</p>
         <ul className="mt-4 space-y-3 text-sm text-[var(--muted)]">
-          <li className="rounded-2xl border border-[var(--border)] px-4 py-3">Google auth: placeholder only</li>
+          <li className="rounded-2xl border border-[var(--border)] px-4 py-3">Google auth: enabled</li>
           <li className="rounded-2xl border border-[var(--border)] px-4 py-3">Portfolio API: placeholder only</li>
           <li className="rounded-2xl border border-[var(--border)] px-4 py-3">Supabase integration: not started</li>
         </ul>
