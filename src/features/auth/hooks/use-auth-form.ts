@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useCallback, useState } from "react";
 
@@ -27,7 +26,6 @@ type UseAuthFormReturn = {
 };
 
 export function useAuthForm({ callbackUrl }: UseAuthFormOptions): UseAuthFormReturn {
-  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [formState, setFormState] = useState<AuthFormState>({
     name: "",
@@ -47,34 +45,6 @@ export function useAuthForm({ callbackUrl }: UseAuthFormOptions): UseAuthFormRet
     setError(null);
   }, []);
 
-  const registerUser = async (data: AuthFormState): Promise<void> => {
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const result = (await response.json()) as { message?: string };
-      throw new Error(result.message ?? "Unable to create account.");
-    }
-  };
-
-  const authenticateUser = async (email: string, password: string): Promise<string> => {
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl,
-    });
-
-    if (!result || result.error) {
-      throw new Error("Invalid email or password.");
-    }
-
-    return result.url ?? callbackUrl;
-  };
-
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -82,13 +52,40 @@ export function useAuthForm({ callbackUrl }: UseAuthFormOptions): UseAuthFormRet
       setIsPending(true);
 
       try {
+        // Step 1: Register user if signing up
         if (mode === "signup") {
-          await registerUser(formState);
+          const response = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formState),
+          });
+
+          if (!response.ok) {
+            const result = (await response.json()) as { message?: string };
+            throw new Error(result.message ?? "Unable to create account.");
+          }
         }
 
-        const redirectUrl = await authenticateUser(formState.email, formState.password);
-        router.push(redirectUrl);
-        router.refresh();
+        // Step 2: Authenticate with credentials
+        const result = await signIn("credentials", {
+          email: formState.email,
+          password: formState.password,
+          redirect: false,
+        });
+
+        if (!result) {
+          throw new Error("Authentication failed. Please try again.");
+        }
+
+        if (result.error) {
+          throw new Error(mode === "signup" 
+            ? "Account created but sign-in failed. Please try signing in." 
+            : "Invalid email or password.");
+        }
+
+        // Step 3: Hard redirect to ensure session cookie is picked up
+        // Using window.location for full page reload instead of client navigation
+        window.location.href = callbackUrl;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Something went wrong.";
         setError(message);
@@ -96,7 +93,7 @@ export function useAuthForm({ callbackUrl }: UseAuthFormOptions): UseAuthFormRet
         setIsPending(false);
       }
     },
-    [mode, formState, callbackUrl, router]
+    [mode, formState, callbackUrl]
   );
 
   return {
