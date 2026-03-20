@@ -92,11 +92,13 @@ Current scope:
 - Real secrets go only in local `.env.local` or deployed platform environment variables
 - `.env.example` documents required variables without storing credentials
 - `.gitignore` blocks all runtime `.env` variants from Git
+- local email/password test accounts are stored in `.data/auth-users.json`, which is also ignored by Git
 
 ## Release Flag
 
 - `ENABLE_NEW_APP=false` keeps the live site on the static demo file served at `/index.html`
 - `ENABLE_NEW_APP=true` exposes the new Next.js app shell
+- local development should use `.env.local` with `ENABLE_NEW_APP=true`
 - when enabled, the scaffold entry route is `/mvp1-preview`
 - the public demo entry file is `Demo/index.html`
 - `public/index.html` is the served copy used by Next.js for the default-off experience
@@ -105,7 +107,8 @@ Current scope:
 ## Vercel Deploy
 
 - A deploy from `main` will show the demo by default because `ENABLE_NEW_APP` falls back to `false` when unset.
-- If you want to be explicit in Vercel, set `ENABLE_NEW_APP=false` in Production before deploying.
+- For now, keep `ENABLE_NEW_APP=false` in Vercel Production so the demo is always served there.
+- Use `.env.local` with `ENABLE_NEW_APP=true` for local development and testing.
 - Only set `ENABLE_NEW_APP=true` when you are ready to expose the new Next.js app.
 
 ## Local Commands
