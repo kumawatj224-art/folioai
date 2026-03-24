@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { isNewAppEnabled } from "@/lib/env/feature-flags";
 
-const bypassPrefixes = ["/_next", "/api", "/favicon.ico", "/robots.txt", "/sitemap.xml", "/index.html"];
+const bypassPrefixes = ["/_next", "/api", "/__demo", "/favicon.ico", "/robots.txt", "/sitemap.xml"];
 
 export function middleware(request: NextRequest) {
   if (isNewAppEnabled()) {
@@ -16,19 +16,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow static files to pass through
   if (pathname.includes(".")) {
     return NextResponse.next();
   }
 
-  // Redirect to index.html for demo mode instead of rewrite
-  // This ensures the static file is served without Next.js page processing
+  // Rewrite to /__demo route which serves Demo/index.html
+  // Using rewrite keeps the URL as "/" but serves demo content
   const demoUrl = request.nextUrl.clone();
-  demoUrl.pathname = "/index.html";
+  demoUrl.pathname = "/__demo";
 
-  return NextResponse.redirect(demoUrl);
+  return NextResponse.rewrite(demoUrl);
 }
 
 export const config = {
-  // Explicitly match root and all paths
   matcher: ["/", "/((?!_next/static|_next/image|favicon.ico).*)"],
 };
