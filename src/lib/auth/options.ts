@@ -8,12 +8,16 @@ import { userRepository } from "@/infrastructure/repositories/user-repository";
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+// Fallback secret for demo mode - prevents NO_SECRET error when app is not enabled
+// Auth won't actually be used in demo mode since middleware redirects to static page
+const authSecret = process.env.NEXTAUTH_SECRET || "demo-mode-fallback-secret-not-used";
+
 export function isGoogleAuthConfigured() {
   return Boolean(googleClientId && googleClientSecret && googleClientId !== "replace-me" && googleClientSecret !== "replace-me");
 }
 
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: authSecret,
   session: {
     strategy: "jwt",
   },
