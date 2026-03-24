@@ -16,6 +16,7 @@ type ChatRequestBody = {
   studentInfo: Partial<StudentInfo>;
   action?: "chat" | "generate";
   template?: PortfolioTemplate;
+  existingHtml?: string | null;
 };
 
 /**
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as ChatRequestBody;
-    const { messages, studentInfo, action = "chat", template = "minimal-dark" } = body;
+    const { messages, studentInfo, action = "chat", template = "minimal-dark", existingHtml } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "Invalid messages" }, { status: 400 });
@@ -58,12 +59,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const html = await generatePortfolioHtml(studentInfo as StudentInfo, template);
+      const html = await generatePortfolioHtml(studentInfo as StudentInfo, template, existingHtml);
       return NextResponse.json({ html });
     }
 
     // Continue conversation
-    const aiResponse = await generateChatResponse(messages, studentInfo);
+    const aiResponse = await generateChatResponse(messages, studentInfo, existingHtml);
     const updatedInfo = await extractStudentInfo(messages);
     const readyToGenerate = isReadyToGenerate(updatedInfo);
 

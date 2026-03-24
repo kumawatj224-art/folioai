@@ -11,11 +11,11 @@ type BadgeProps = {
 } & React.HTMLAttributes<HTMLSpanElement>;
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "bg-[var(--surface)] text-[var(--muted)]",
-  success: "bg-green-50 text-green-700",
-  warning: "bg-amber-50 text-amber-700",
-  error: "bg-red-50 text-red-700",
-  info: "bg-blue-50 text-blue-700",
+  default: "bg-neutral-100 text-neutral-600",
+  success: "bg-green-50 text-green-600",
+  warning: "bg-amber-50 text-amber-600",
+  error: "bg-red-50 text-red-600",
+  info: "bg-blue-50 text-blue-600",
 };
 
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
@@ -24,7 +24,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={`
-          inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium
+          inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium
           ${variantClasses[variant]}
           ${className}
         `}

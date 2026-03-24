@@ -99,7 +99,7 @@ Current scope:
 - `ENABLE_NEW_APP=false` keeps the live site on the static demo file served at `/index.html`
 - `ENABLE_NEW_APP=true` exposes the new Next.js app shell
 - local development should use `.env.local` with `ENABLE_NEW_APP=true`
-- when enabled, the scaffold entry route is `/mvp1-preview`
+- the main entry route is `/` (home page with auth)
 - the public demo entry file is `Demo/index.html`
 - `public/index.html` is the served copy used by Next.js for the default-off experience
 - `Demo/folioai-landing.html` remains intact as the current demo source snapshot

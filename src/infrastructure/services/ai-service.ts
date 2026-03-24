@@ -157,12 +157,29 @@ export async function* streamAzureOpenAI(
 
 export async function generateChatResponse(
   messages: ChatMessage[],
-  studentInfo: Partial<StudentInfo>
+  studentInfo: Partial<StudentInfo>,
+  existingHtml?: string | null
 ): Promise<string> {
-  const systemMessage = CONVERSATION_SYSTEM_PROMPT.replace(
+  let systemMessage = CONVERSATION_SYSTEM_PROMPT.replace(
     "{{STUDENT_INFO}}",
     JSON.stringify(studentInfo, null, 2)
   );
+
+  // Add context about existing portfolio if editing
+  if (existingHtml) {
+    systemMessage += `\n\n**IMPORTANT - Editing Mode:**
+The user already has a portfolio. They're asking you to help modify it.
+You have access to their current portfolio HTML below. When they ask for changes:
+1. Understand what they want to modify
+2. If they want content changes, ask clarifying questions
+3. If they want design changes, suggest options
+4. Let them know you can regenerate the portfolio with their requested changes
+
+Current Portfolio HTML:
+\`\`\`html
+${existingHtml.substring(0, 8000)}${existingHtml.length > 8000 ? '\n... (truncated)' : ''}
+\`\`\``;
+  }
 
   const apiMessages = [
     { role: "system", content: systemMessage },
@@ -174,11 +191,18 @@ export async function generateChatResponse(
 
 export async function generatePortfolioHtml(
   studentInfo: StudentInfo,
-  template: PortfolioTemplate
+  template: PortfolioTemplate,
+  existingHtml?: string | null
 ): Promise<string> {
-  const prompt = HTML_GENERATION_PROMPT
+  let prompt = HTML_GENERATION_PROMPT
     .replace("{{STUDENT_INFO}}", JSON.stringify(studentInfo, null, 2))
     .replace("{{TEMPLATE}}", template);
+
+  // Include existing HTML as reference if editing
+  if (existingHtml) {
+    prompt += `\n\n**Reference - Previous Portfolio:**
+The user had an existing portfolio. Try to preserve their custom styling preferences and structure unless they asked for changes. Use this as a reference:\n\`\`\`html\n${existingHtml.substring(0, 6000)}${existingHtml.length > 6000 ? '\n... (truncated)' : ''}\n\`\`\``;
+  }
 
   const response = await callAzureOpenAI([
     { role: "system", content: "You are a web developer that generates clean, production-ready HTML." },
