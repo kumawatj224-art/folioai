@@ -15,7 +15,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
   });
 
   return (
-    <aside className="rounded-3xl border border-[var(--border)] bg-white p-6 shadow-[0_8px_40px_rgba(24,20,17,0.06)] md:p-8">
+    <aside className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
       <AuthHeader mode={mode} />
       <ModeToggle mode={mode} onModeChange={setMode} />
 
@@ -23,7 +23,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
         <div className="mt-6">
           <GoogleSignInButton
             callbackUrl={callbackUrl}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface)]"
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-all hover:bg-neutral-50 hover:border-neutral-300"
           />
         </div>
       )}

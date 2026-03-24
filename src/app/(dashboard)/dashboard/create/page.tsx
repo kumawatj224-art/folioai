@@ -8,7 +8,7 @@ export default async function CreatePortfolioPage() {
   const session = await getCurrentSession();
   
   if (!session?.user) {
-    redirect("/mvp1-preview");
+    redirect("/");
   }
 
   // Check if user already has a portfolio

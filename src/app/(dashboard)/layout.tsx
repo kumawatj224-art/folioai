@@ -17,33 +17,52 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const session = await getCurrentSession();
 
   if (!session?.user) {
-    redirect("/mvp1-preview");
+    redirect("/");
   }
 
   return (
-    <div className="min-h-screen px-6 py-8 md:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <header className="flex flex-col justify-between gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] backdrop-blur md:flex-row md:items-center">
-          <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-[var(--muted)]">Dashboard</p>
-            <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">
-              FolioAI workspace
-            </h1>
+    <div className="min-h-screen bg-neutral-50">
+      {/* Fixed Header */}
+      <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900">
+                <span className="text-sm font-bold text-white">F</span>
+              </div>
+              <span className="font-semibold tracking-tight text-neutral-900">FolioAI</span>
+            </Link>
+            
+            {/* Navigation */}
+            <nav className="hidden sm:flex items-center gap-1">
+              <Link 
+                href="/dashboard" 
+                className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+              >
+                Portfolios
+              </Link>
+              <Link 
+                href="/templates" 
+                className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+              >
+                Templates
+              </Link>
+            </nav>
           </div>
 
-          <div className="flex items-center gap-3 text-sm">
-            <Link href="/" className="rounded-full border border-[var(--border)] px-4 py-2">
-              Back to home
-            </Link>
-            <span className="rounded-full bg-white px-4 py-2 text-[var(--muted)]">
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline text-sm text-neutral-500">
               {session.user.email}
             </span>
-            <SignOutButton />
+            <SignOutButton className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors" />
           </div>
-        </header>
+        </div>
+      </header>
 
+      {/* Main Content */}
+      <main className="mx-auto max-w-6xl px-6 py-8">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

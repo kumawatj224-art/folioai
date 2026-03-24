@@ -12,7 +12,7 @@ export default async function NewChatPage() {
   const session = await getCurrentSession();
   
   if (!session?.user) {
-    redirect("/mvp1-preview");
+    redirect("/");
   }
 
   return (

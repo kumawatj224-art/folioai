@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 const INITIAL_MESSAGE: ChatMessage = {
   id: "initial",
   role: "assistant",
-  content: "Hi! 👋 I'm FolioAI, and I'll help you create a stunning portfolio website in just a few minutes.\n\nLet's start with the basics — what's your name, and what are you studying? (College, branch, year)",
+  content: "Hi! I'm FolioAI. I'll help you create a professional portfolio.\n\nLet's start — what's your name and what do you study?",
   timestamp: new Date(),
 };
 
@@ -18,19 +18,22 @@ type ChatInterfaceProps = {
   portfolioId?: string;
   initialMessages?: ChatMessage[];
   initialStudentInfo?: Partial<StudentInfo>;
+  initialHtml?: string | null;
 };
 
 export function ChatInterface({ 
   portfolioId, 
   initialMessages = [INITIAL_MESSAGE],
-  initialStudentInfo = {} 
+  initialStudentInfo = {},
+  initialHtml = null,
 }: ChatInterfaceProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [studentInfo, setStudentInfo] = useState<Partial<StudentInfo>>(initialStudentInfo);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
+  const [generatedHtml, setGeneratedHtml] = useState<string | null>(initialHtml);
+  const [existingHtml] = useState<string | null>(initialHtml); // Keep original for AI context
   const [selectedTemplate, setSelectedTemplate] = useState<PortfolioTemplate>("minimal-dark");
   const [readyToGenerate, setReadyToGenerate] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export function ChatInterface({
           messages: newMessages,
           studentInfo,
           action: "chat",
+          existingHtml: existingHtml, // Pass current portfolio HTML for AI context
         }),
       });
 
@@ -110,6 +114,7 @@ export function ChatInterface({
           studentInfo,
           action: "generate",
           template: selectedTemplate,
+          existingHtml: existingHtml, // Pass existing HTML for context when regenerating
         }),
       });
 
@@ -138,8 +143,13 @@ export function ChatInterface({
         ? `${studentInfo.name}'s Portfolio`
         : "My Portfolio";
 
-      const response = await fetch("/api/portfolios", {
-        method: "POST",
+      // Use PATCH for existing portfolio, POST for new
+      const isEditing = !!portfolioId;
+      const url = isEditing ? `/api/portfolios/${portfolioId}` : "/api/portfolios";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -177,29 +187,28 @@ export function ChatInterface({
   ];
 
   return (
-    <div className="flex h-[calc(100vh-80px)] gap-4">
+    <div className="flex h-[calc(100vh-120px)] gap-6">
       {/* Chat Panel */}
-      <div className="flex w-1/2 flex-col rounded-2xl border border-neutral-200 bg-white">
+      <div className="flex w-1/2 flex-col rounded-xl border border-neutral-200 bg-white">
         {/* Chat Header */}
-        <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
           <div>
-            <h2 className="font-semibold text-neutral-900">Build Your Portfolio</h2>
-            <p className="text-sm text-neutral-500">Chat with AI to create your site</p>
+            <h2 className="font-medium text-neutral-900">Chat</h2>
           </div>
           {readyToGenerate && !generatedHtml && (
-            <Button onClick={generatePortfolio} disabled={isLoading}>
-              {isLoading ? "Generating..." : "Generate Portfolio"}
+            <Button size="sm" onClick={generatePortfolio} disabled={isLoading}>
+              {isLoading ? "Generating..." : "Generate"}
             </Button>
           )}
           {generatedHtml && (
-            <Button onClick={savePortfolio} disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save & Continue"}
+            <Button size="sm" onClick={savePortfolio} disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save"}
             </Button>
           )}
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-4">
             {messages.map((message) => (
               <div
@@ -207,13 +216,13 @@ export function ChatInterface({
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
                     message.role === "user"
-                      ? "bg-violet-600 text-white"
+                      ? "bg-neutral-900 text-white"
                       : "bg-neutral-100 text-neutral-900"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
                 </div>
               </div>
             ))}
@@ -221,9 +230,9 @@ export function ChatInterface({
               <div className="flex justify-start">
                 <div className="rounded-2xl bg-neutral-100 px-4 py-3">
                   <div className="flex gap-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: "0ms" }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: "150ms" }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: "300ms" }} />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400 [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400 [animation-delay:300ms]" />
                   </div>
                 </div>
               </div>
@@ -234,48 +243,46 @@ export function ChatInterface({
 
         {/* Error */}
         {error && (
-          <div className="mx-6 mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mx-5 mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
             {error}
           </div>
         )}
 
         {/* Input */}
         <div className="border-t border-neutral-100 p-4">
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
+              placeholder="Type a message..."
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-neutral-200 px-4 py-3 text-sm transition-colors focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              className="flex-1 resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-colors placeholder:text-neutral-400 focus:border-neutral-300 focus:bg-white focus:outline-none"
               disabled={isLoading}
             />
-            <Button onClick={sendMessage} disabled={!input.trim() || isLoading}>
-              Send
+            <Button size="sm" onClick={sendMessage} disabled={!input.trim() || isLoading}>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
             </Button>
           </div>
         </div>
       </div>
 
       {/* Preview Panel */}
-      <div className="flex w-1/2 flex-col rounded-2xl border border-neutral-200 bg-white">
+      <div className="flex w-1/2 flex-col rounded-xl border border-neutral-200 bg-white">
         {/* Preview Header */}
-        <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4">
-          <div>
-            <h2 className="font-semibold text-neutral-900">Live Preview</h2>
-            <p className="text-sm text-neutral-500">
-              {generatedHtml ? "Your portfolio is ready!" : "Preview will appear here"}
-            </p>
-          </div>
+        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+          <h2 className="font-medium text-neutral-900">Preview</h2>
 
           {/* Template Selector */}
           {!generatedHtml && (
             <select
               value={selectedTemplate}
               onChange={(e) => setSelectedTemplate(e.target.value as PortfolioTemplate)}
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
+              aria-label="Select template"
+              className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm text-neutral-700 focus:border-neutral-300 focus:outline-none"
             >
               {templates.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -297,52 +304,51 @@ export function ChatInterface({
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="mb-4 rounded-full bg-neutral-100 p-6">
-                <svg className="h-12 w-12 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-200">
+                <svg className="h-6 w-6 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="mb-2 font-medium text-neutral-900">No preview yet</h3>
-              <p className="max-w-xs text-sm text-neutral-500">
-                Chat with the AI to share your details. Once you have enough info, click "Generate Portfolio" to see your site.
+              <p className="text-sm text-neutral-500">
+                Share your details in the chat<br />to generate a preview
               </p>
 
-              {/* Info Collected Summary */}
+              {/* Info Summary */}
               {Object.keys(studentInfo).length > 0 && (
-                <div className="mt-6 w-full max-w-sm rounded-xl bg-white p-4 text-left shadow-sm">
-                  <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                    Info Collected
-                  </h4>
-                  <ul className="space-y-2 text-sm">
+                <div className="mt-6 w-full max-w-xs rounded-lg bg-white p-4 text-left">
+                  <p className="mb-3 text-xs font-medium text-neutral-400 uppercase tracking-wide">
+                    Collected
+                  </p>
+                  <div className="space-y-2">
                     {studentInfo.name && (
-                      <li className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        <span className="text-neutral-600">Name: {studentInfo.name}</span>
-                      </li>
+                      <div className="flex items-center gap-2 text-sm text-neutral-600">
+                        <span className="h-1 w-1 rounded-full bg-green-500" />
+                        {studentInfo.name}
+                      </div>
                     )}
                     {studentInfo.college && (
-                      <li className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        <span className="text-neutral-600">College: {studentInfo.college}</span>
-                      </li>
+                      <div className="flex items-center gap-2 text-sm text-neutral-600">
+                        <span className="h-1 w-1 rounded-full bg-green-500" />
+                        {studentInfo.college}
+                      </div>
                     )}
                     {studentInfo.skills && studentInfo.skills.length > 0 && (
-                      <li className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        <span className="text-neutral-600">{studentInfo.skills.length} skills</span>
-                      </li>
+                      <div className="flex items-center gap-2 text-sm text-neutral-600">
+                        <span className="h-1 w-1 rounded-full bg-green-500" />
+                        {studentInfo.skills.length} skills
+                      </div>
                     )}
                     {studentInfo.projects && studentInfo.projects.length > 0 && (
-                      <li className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        <span className="text-neutral-600">{studentInfo.projects.length} projects</span>
-                      </li>
+                      <div className="flex items-center gap-2 text-sm text-neutral-600">
+                        <span className="h-1 w-1 rounded-full bg-green-500" />
+                        {studentInfo.projects.length} projects
+                      </div>
                     )}
-                  </ul>
+                  </div>
 
                   {readyToGenerate && (
                     <p className="mt-4 text-xs text-green-600">
-                      ✓ Ready to generate!
+                      Ready to generate
                     </p>
                   )}
                 </div>

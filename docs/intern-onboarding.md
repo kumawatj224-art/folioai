@@ -180,7 +180,7 @@ Not good first tasks:
 
 - `ENABLE_NEW_APP=false` means visitors see the existing HTML demo
 - `ENABLE_NEW_APP=true` means visitors see the new Next.js app routes
-- the scaffold preview route is `/mvp1-preview`
+- the main landing page is at `/`
 - `Demo/index.html` is the public entry file until the flag is flipped
 - `public/index.html` is the static file currently served by Next.js while the flag is off
 - `Demo/folioai-landing.html` is preserved as the current demo snapshot
