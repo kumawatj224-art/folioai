@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import { createRepositories } from "@/infrastructure/repositories/file-repository";
+import { isNewAppEnabled } from "@/lib/env/feature-flags";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -29,6 +30,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function PortfolioPage({ params }: PageProps) {
+  // Redirect to static demo page if new app is disabled
+  if (!isNewAppEnabled()) {
+    redirect("/index.html");
+  }
+
   const { slug } = await params;
   const { portfolios, projects, skills } = createRepositories();
   
