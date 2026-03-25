@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AuthPanel } from "@/features/auth/components/auth-panel";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
@@ -6,8 +7,13 @@ import { siteConfig } from "@/config/site";
 import { isGoogleAuthConfigured } from "@/lib/auth/options";
 import { getCurrentSession } from "@/lib/auth/session";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
+import { isNewAppEnabled } from "@/lib/env/feature-flags";
 
 export default async function HomePage() {
+  // Redirect to static demo page if new app is disabled
+  if (!isNewAppEnabled()) {
+    redirect("/index.html");
+  }
   const session = await getCurrentSession();
   const googleEnabled = isGoogleAuthConfigured();
   
