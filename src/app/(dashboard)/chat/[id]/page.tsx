@@ -46,24 +46,24 @@ export default async function EditChatPage({ params }: PageProps) {
       }];
   
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-white px-6 py-4">
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <header className="border-b border-white/[0.08] bg-[#111111] px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-neutral-500 hover:text-neutral-900">
+            <Link href="/dashboard" className="text-[#a0a0a0] hover:text-[#f0ece4] transition-colors">
               ← Back to Dashboard
             </Link>
-            <span className="text-neutral-300">|</span>
-            <h1 className="font-semibold text-neutral-900">Edit: {portfolio.title}</h1>
+            <span className="text-[#606060]">|</span>
+            <h1 className="font-display font-semibold text-[#f0ece4]">Edit: {portfolio.title}</h1>
           </div>
           <div className="flex items-center gap-4">
             <Link 
               href={`/portfolio/${id}`} 
-              className="text-sm text-violet-600 hover:text-violet-700"
+              className="text-sm text-[#ff6b35] hover:text-[#ff9f1c] transition-colors"
             >
               View Portfolio →
             </Link>
-            <span className="text-sm text-neutral-500">{session.user.email}</span>
+            <span className="text-sm text-[#606060]">{session.user.email}</span>
           </div>
         </div>
       </header>

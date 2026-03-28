@@ -1,18 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --foreground: #0a0a0a;
-  --muted: #737373;
-  --muted-foreground: #a3a3a3;
-  --border: #e5e5e5;
-  --border-subtle: #f5f5f5;
-  --accent: #0a0a0a;
+  /* Dark theme - FolioAI Premium Design System */
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-elevated: #1a1a1a;
+  --surface-hover: #222222;
+  --foreground: #f0ece4;
+  --muted: #a0a0a0;
+  --muted-foreground: #606060;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.15);
+  --accent: #ff6b35;
+  --accent-secondary: #ff9f1c;
   --accent-foreground: #ffffff;
+  --accent-glow: rgba(255, 107, 53, 0.15);
   --success: #22c55e;
   --error: #ef4444;
+  --blue: #3b82f6;
+  --purple: #a855f7;
   --radius: 12px;
 }
 
@@ -52,10 +58,11 @@ main {
 }
 
 ::selection {
-  background: rgba(10, 10, 10, 0.1);
+  background: rgba(255, 107, 53, 0.3);
+  color: #fff;
 }
 
-/* Smooth scrollbar */
+/* Dark scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -66,12 +73,12 @@ main {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d4;
+  background: #333;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a3a3a3;
+  background: #444;
 }
 
 /* Animation utilities */
@@ -85,10 +92,34 @@ main {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-7px); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
 
 .animate-slide-up {
   animation: slideUp 0.5s ease-out forwards;
+}
+
+.animate-pulse-dot {
+  animation: pulse 2s infinite;
+}
+
+/* Glow effects */
+.glow-accent {
+  box-shadow: 0 0 40px var(--accent-glow);
+}
+
+/* Typography helpers */
+.font-display {
+  font-family: var(--font-heading), sans-serif;
 }

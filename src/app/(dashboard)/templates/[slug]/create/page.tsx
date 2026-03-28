@@ -30,10 +30,10 @@ export default async function TemplateCreatePage({ params }: Props) {
   }
 
   return (
-    <div className="h-full w-full px-6 py-4">
+    <div className="h-full w-full bg-[#0a0a0a] px-6 py-4">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-neutral-900">Create Your Portfolio</h1>
-        <p className="text-sm text-neutral-600">Fill in your details and we&apos;ll generate a beautiful portfolio for you.</p>
+        <h1 className="font-display text-2xl font-bold text-[#f0ece4]">Create Your Portfolio</h1>
+        <p className="text-sm text-[#a0a0a0]">Fill in your details and we&apos;ll generate a beautiful portfolio for you.</p>
       </div>
       
       <TemplateCreateForm

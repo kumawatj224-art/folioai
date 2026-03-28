@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { Manrope, Sora } from "next/font/google";
+import { Space_Grotesk, DM_Sans } from "next/font/google";
 
 import "./globals.css";
 
-const headingFont = Sora({
+const headingFont = Space_Grotesk({
   variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const bodyFont = Manrope({
+const bodyFont = DM_Sans({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -24,7 +26,7 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
         {children}
       </body>

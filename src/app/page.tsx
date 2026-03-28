@@ -32,15 +32,15 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[#0a0a0a]">
       {/* Navigation */}
-      <nav className="fixed top-0 z-50 w-full border-b border-neutral-100 bg-white/80 backdrop-blur-xl">
+      <nav className="fixed top-0 z-50 w-full border-b border-white/[0.08] bg-[#0a0a0a]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff6b35]">
               <span className="text-sm font-bold text-white">F</span>
             </div>
-            <span className="font-semibold tracking-tight text-neutral-900">
+            <span className="font-display text-base font-semibold tracking-tight text-[#f0ece4]">
               {siteConfig.name}
             </span>
           </Link>
@@ -49,114 +49,184 @@ export default async function HomePage() {
             <div className="flex items-center gap-2">
               <Link 
                 href="/dashboard" 
-                className="px-4 py-2 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+                className="flex h-10 items-center px-4 text-sm font-medium text-[#a0a0a0] transition-colors hover:text-[#f0ece4]"
               >
                 Dashboard
               </Link>
-              <SignOutButton className="px-4 py-2 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900" />
+              <SignOutButton className="flex h-10 items-center px-4 text-sm font-medium text-[#a0a0a0] transition-colors hover:text-[#f0ece4]" />
             </div>
           ) : (
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-neutral-500">Have an account?</span>
+            <div className="flex items-center gap-3">
+              <a 
+                href="#auth" 
+                className="inline-flex h-10 items-center justify-center rounded-full border border-white/[0.15] px-5 text-sm font-medium text-[#a0a0a0] transition-all hover:border-[#ff6b35] hover:text-[#f0ece4]"
+              >
+                Sign in
+              </a>
+              <a 
+                href="#auth" 
+                className="inline-flex h-10 items-center justify-center rounded-full bg-[#ff6b35] px-5 text-sm font-semibold text-white transition-all hover:opacity-90"
+              >
+                Get started free
+              </a>
             </div>
           )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="grid items-center gap-16 lg:grid-cols-2 lg:gap-24">
-            {/* Left: Content */}
-            <div className="max-w-xl">
-              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-neutral-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                Build in 5 minutes
-              </div>
+      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-16">
+        {/* Glow Effect */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,107,53,0.12)_0%,transparent_70%)]" />
+        
+        <div className="relative z-10 mx-auto max-w-4xl text-center">
+          {/* Pill Badge */}
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#ff6b35]/30 bg-[#ff6b35]/[0.08] px-4 py-1.5 text-sm text-[#ff6b35]">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ff6b35]" />
+            Built for Indian placement season 2026
+          </div>
 
-              <h1 className="text-4xl font-semibold leading-tight tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
-                Create a portfolio
-                <br />
-                <span className="text-neutral-400">that works</span>
-              </h1>
+          {/* Heading */}
+          <h1 className="font-display text-5xl font-bold leading-[1.0] tracking-tight sm:text-6xl lg:text-7xl">
+            <span className="text-[#f0ece4]">Build your portfolio</span>
+            <br />
+            <span className="text-[#ff6b35]">in 60 seconds.</span>
+            <br />
+            <span className="font-normal text-[#606060]">Get placed faster.</span>
+          </h1>
 
-              <p className="mt-6 text-lg leading-relaxed text-neutral-500">
-                Simple. Professional. Free. Build a portfolio website that showcases your work and opens doors to opportunities.
-              </p>
+          <p className="mx-auto mt-6 max-w-lg text-lg font-light leading-relaxed text-[#a0a0a0]">
+            Chat with AI, get a stunning portfolio, deploy it live — before your next interview. No coding. No design skills needed.
+          </p>
 
-              {/* Features */}
-              <div className="mt-10 flex flex-col gap-4">
-                {[
-                  { icon: "⚡", text: "AI-powered generation" },
-                  { icon: "🎨", text: "Professional templates" },
-                  { icon: "🔗", text: "Custom subdomain included" },
-                ].map((feature) => (
-                  <div key={feature.text} className="flex items-center gap-3 text-sm text-neutral-600">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-base">
-                      {feature.icon}
-                    </span>
-                    {feature.text}
-                  </div>
-                ))}
-              </div>
-
-              {/* CTA for non-logged in */}
-              {!session?.user && (
-                <div className="mt-10">
-                  <p className="text-xs text-neutral-400">Trusted by 2,000+ students</p>
+          {/* CTA */}
+          {session?.user ? (
+            <div className="mt-10 flex flex-col items-center gap-4">
+              <div className="rounded-2xl border border-white/[0.15] bg-[#111111] p-8">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1a1a1a] mx-auto mb-4">
+                  <span className="text-xl font-semibold text-[#f0ece4]">
+                    {(session.user.name?.[0] ?? session.user.email?.[0] ?? "U").toUpperCase()}
+                  </span>
                 </div>
-              )}
+                <p className="text-sm text-[#606060]">Welcome back</p>
+                <h2 className="mt-1 text-lg font-semibold text-[#f0ece4]">
+                  {session.user.name ?? session.user.email}
+                </h2>
+                {userPortfolio && (
+                  <p className="mt-2 text-sm text-[#606060]">1 portfolio created</p>
+                )}
+                <div className="mt-6 flex flex-col gap-3">
+                  <Link 
+                    href="/dashboard" 
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.15] bg-[#1a1a1a] px-6 py-3 text-sm font-medium text-[#f0ece4] transition-all hover:bg-[#ff6b35] hover:border-[#ff6b35]"
+                  >
+                    Go to Dashboard
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                  <SignOutButton className="w-full rounded-xl border border-white/[0.08] px-6 py-3 text-sm font-medium text-[#a0a0a0] transition-all hover:bg-[#1a1a1a] hover:text-[#f0ece4]" />
+                </div>
+              </div>
             </div>
-
-            {/* Right: Auth or Welcome */}
-            {session?.user ? (
-              <div className="rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
-                <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
-                    <span className="text-2xl font-semibold text-neutral-700">
-                      {(session.user.name?.[0] ?? session.user.email?.[0] ?? "U").toUpperCase()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-neutral-500">Welcome back</p>
-                  <h2 className="mt-1 text-xl font-semibold text-neutral-900">
-                    {session.user.name ?? session.user.email}
-                  </h2>
-                  
-                  {userPortfolio && (
-                    <p className="mt-2 text-sm text-neutral-400">
-                      1 portfolio created
-                    </p>
-                  )}
-
-                  <div className="mt-8 space-y-3">
-                    <Link 
-                      href="/dashboard" 
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-6 py-3 text-sm font-medium text-neutral-600 transition-all hover:bg-neutral-900 hover:text-white hover:border-neutral-900"
-                    >
-                      Go to Dashboard
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                    <SignOutButton className="w-full rounded-xl border border-neutral-200 px-6 py-3 text-sm font-medium text-neutral-600 transition-all hover:bg-neutral-50" />
-                  </div>
-                </div>
+          ) : (
+            <div className="mt-10 flex flex-col items-center gap-4">
+              <div className="flex max-w-md w-full gap-0 overflow-hidden rounded-2xl border border-white/[0.15] bg-[#111111] p-1.5">
+                <input
+                  type="email"
+                  placeholder="your.email@college.edu"
+                  className="flex-1 bg-transparent px-4 py-3 text-sm text-[#f0ece4] placeholder-[#606060] outline-none"
+                />
+                <button className="whitespace-nowrap rounded-xl bg-[#ff6b35] px-5 py-3 text-sm font-semibold text-white transition-all hover:opacity-90">
+                  Join waitlist →
+                </button>
               </div>
-            ) : (
-              <AuthPanel googleEnabled={googleEnabled} />
-            )}
+              <p className="text-xs text-[#606060]">
+                Free during beta · No credit card · First 500 get Pro free
+              </p>
+            </div>
+          )}
+
+          {/* Stats */}
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-x-12 gap-y-6 border-t border-white/[0.08] pt-12">
+            {[
+              { num: "1.5M+", label: "engineering grads/year" },
+              { num: "<3%", label: "have a portfolio" },
+              { num: "60s", label: "to build yours" },
+              { num: "₹0", label: "to get started" },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="font-display text-3xl font-bold text-[#f0ece4]">{stat.num}</div>
+                <div className="text-sm text-[#606060]">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="border-t border-white/[0.08] py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="mb-12 text-center">
+            <span className="mb-3 inline-block text-xs font-semibold uppercase tracking-widest text-[#ff6b35]">
+              Features
+            </span>
+            <h2 className="font-display text-3xl font-bold text-[#f0ece4] sm:text-4xl">
+              Everything you need to stand out
+            </h2>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { 
+                icon: "💬", 
+                iconBg: "bg-[#ff6b35]/15",
+                title: "AI Chat Interface", 
+                desc: "Just describe yourself — projects, skills, internships. The AI asks the right questions and builds your portfolio as you chat." 
+              },
+              { 
+                icon: "🚀", 
+                iconBg: "bg-[#3b82f6]/15",
+                title: "One-Click Deploy", 
+                desc: "Portfolio goes live on jai.getfolioai.in instantly. Share the link in your resume and impress recruiters." 
+              },
+              { 
+                icon: "🎨", 
+                iconBg: "bg-[#22c55e]/15",
+                title: "Free Templates", 
+                desc: "3 free templates designed for placement season — minimal dark, professional light, and colorful. All genuinely good." 
+              },
+              { 
+                icon: "📊", 
+                iconBg: "bg-[#a855f7]/15",
+                title: "Portfolio Manager", 
+                desc: "Create multiple portfolios for different roles. Edit via chat anytime. Track who viewed your portfolio." 
+              },
+            ].map((feature) => (
+              <div 
+                key={feature.title} 
+                className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111111] p-7 transition-all hover:-translate-y-1 hover:border-white/[0.15]"
+              >
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.05)_0%,transparent_60%)]" />
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${feature.iconBg} text-2xl`}>
+                  {feature.icon}
+                </div>
+                <h3 className="font-display mb-2 text-lg font-semibold text-[#f0ece4]">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-[#a0a0a0]">{feature.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Preview Section */}
-      <section className="border-t border-neutral-100 bg-neutral-50 py-20">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="border-t border-white/[0.08] bg-[#111111] py-20">
+        <div className="mx-auto max-w-5xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+            <h2 className="font-display text-2xl font-bold text-[#f0ece4] sm:text-3xl">
               {userPortfolio ? "Your Portfolio" : "Professional Design"}
             </h2>
-            <p className="mt-3 text-neutral-500">
+            <p className="mt-3 text-[#a0a0a0]">
               {userPortfolio 
                 ? "Here's your latest portfolio preview" 
                 : "Clean, modern templates designed to impress recruiters"
@@ -166,15 +236,15 @@ export default async function HomePage() {
 
           {/* Browser Preview */}
           <div className="mx-auto mt-12 max-w-4xl">
-            <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl shadow-neutral-900/5">
+            <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a] shadow-2xl">
               {/* Browser Chrome */}
-              <div className="flex items-center gap-2 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
+              <div className="flex items-center gap-2 border-b border-white/[0.08] bg-[#111111] px-4 py-3">
                 <div className="flex gap-1.5">
-                  <span className="h-3 w-3 rounded-full bg-neutral-300" />
-                  <span className="h-3 w-3 rounded-full bg-neutral-300" />
-                  <span className="h-3 w-3 rounded-full bg-neutral-300" />
+                  <span className="h-3 w-3 rounded-full bg-[#606060]" />
+                  <span className="h-3 w-3 rounded-full bg-[#606060]" />
+                  <span className="h-3 w-3 rounded-full bg-[#606060]" />
                 </div>
-                <div className="ml-4 flex-1 rounded-md bg-white px-4 py-1.5 text-xs text-neutral-400">
+                <div className="ml-4 flex-1 rounded-lg bg-[#1a1a1a] px-4 py-1.5 text-xs text-[#606060]">
                   {userPortfolio 
                     ? `${session?.user?.name?.toLowerCase().replace(/\s+/g, '-') || 'your-name'}.folioai.co`
                     : 'yourname.folioai.co'
@@ -183,7 +253,7 @@ export default async function HomePage() {
               </div>
               
               {/* Content */}
-              <div className="aspect-[16/10] bg-white">
+              <div className="aspect-[16/10]">
                 {userPortfolio?.htmlContent ? (
                   <iframe
                     srcDoc={userPortfolio.htmlContent}
@@ -192,27 +262,16 @@ export default async function HomePage() {
                     title="Portfolio Preview"
                   />
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center p-12">
-                    <div className="w-full max-w-md space-y-6">
-                      {/* Mockup Profile */}
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-neutral-200 to-neutral-300" />
-                        <div className="space-y-2">
-                          <div className="h-4 w-32 rounded bg-neutral-200" />
-                          <div className="h-3 w-48 rounded bg-neutral-100" />
-                        </div>
-                      </div>
-                      {/* Mockup Projects */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="aspect-video rounded-lg bg-neutral-100" />
-                        <div className="aspect-video rounded-lg bg-neutral-100" />
-                      </div>
-                      {/* Mockup Skills */}
-                      <div className="flex gap-2">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                          <div key={i} className="h-6 w-16 rounded-full bg-neutral-100" />
-                        ))}
-                      </div>
+                  <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] p-12">
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,107,53,0.2)_0%,transparent_60%)]" />
+                    <h3 className="relative font-display text-4xl font-bold text-white sm:text-5xl">
+                      Your Name
+                    </h3>
+                    <p className="relative mt-2 text-white/60">Full Stack Developer · Your College</p>
+                    <div className="relative mt-6 flex flex-wrap justify-center gap-2">
+                      <span className="rounded-full bg-[#ff6b35] px-4 py-1.5 text-xs font-medium text-white">React</span>
+                      <span className="rounded-full border border-white/20 px-4 py-1.5 text-xs text-white/70">Node.js</span>
+                      <span className="rounded-full border border-white/20 px-4 py-1.5 text-xs text-white/70">Python</span>
                     </div>
                   </div>
                 )}
@@ -222,10 +281,27 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Auth Section */}
+      {!session?.user && (
+        <section id="auth" className="border-t border-white/[0.08] py-20">
+          <div className="mx-auto max-w-md px-6">
+            <div className="mb-8 text-center">
+              <h2 className="font-display text-2xl font-bold text-[#f0ece4] sm:text-3xl">
+                Get Started
+              </h2>
+              <p className="mt-2 text-[#a0a0a0]">
+                Create your portfolio in 60 seconds
+              </p>
+            </div>
+            <AuthPanel googleEnabled={googleEnabled} />
+          </div>
+        </section>
+      )}
+
       {/* Footer */}
-      <footer className="border-t border-neutral-100 py-8">
+      <footer className="border-t border-white/[0.08] py-8">
         <div className="mx-auto max-w-6xl px-6 text-center">
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-[#606060]">
             © {new Date().getFullYear()} {siteConfig.name}. Built for students.
           </p>
         </div>
