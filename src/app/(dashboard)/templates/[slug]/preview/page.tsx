@@ -74,16 +74,16 @@ export default async function TemplatePreviewPage({ params }: Params) {
   const previewHtml = renderTemplate(template.htmlTemplate, template.slug, sampleData);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-[#0a0a0a]">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
+      <header className="flex items-center justify-between border-b border-white/[0.08] bg-[#111111] px-6 py-3">
         <div className="flex items-center gap-4">
-          <Link href="/templates" className="text-neutral-500 hover:text-neutral-900">
+          <Link href="/templates" className="text-[#a0a0a0] transition-colors hover:text-[#f0ece4]">
             ← Templates
           </Link>
-          <span className="text-neutral-300">|</span>
+          <span className="text-[#606060]">|</span>
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-neutral-900">{template.name}</h1>
+            <h1 className="font-display font-semibold text-[#f0ece4]">{template.name}</h1>
             {template.isFree ? (
               <Badge variant="success">Free</Badge>
             ) : (
@@ -102,15 +102,15 @@ export default async function TemplatePreviewPage({ params }: Params) {
       </header>
 
       {/* Info Bar */}
-      <div className="border-b border-neutral-100 bg-neutral-50 px-6 py-2">
-        <p className="text-center text-sm text-neutral-600">
-          <span className="font-medium">Preview Mode</span> — This is how your portfolio will look with sample data
+      <div className="border-b border-white/[0.08] bg-[#1a1a1a] px-6 py-2">
+        <p className="text-center text-sm text-[#a0a0a0]">
+          <span className="font-medium text-[#f0ece4]">Preview Mode</span> — This is how your portfolio will look with sample data
         </p>
       </div>
 
       {/* Preview iframe */}
-      <div className="flex-1 overflow-auto bg-neutral-200 p-4">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-2xl">
+      <div className="flex-1 overflow-auto bg-[#0a0a0a] p-4">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-xl border border-white/[0.08] bg-white shadow-2xl shadow-black/50">
           <iframe
             srcDoc={previewHtml}
             className="h-[800px] w-full"

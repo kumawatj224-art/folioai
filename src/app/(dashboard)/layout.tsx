@@ -21,29 +21,29 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-[#0a0a0a]">
       {/* Fixed Header */}
-      <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#111111]">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff6b35]">
                 <span className="text-sm font-bold text-white">F</span>
               </div>
-              <span className="font-semibold tracking-tight text-neutral-900">FolioAI</span>
+              <span className="font-semibold tracking-tight text-[#f0ece4]">FolioAI</span>
             </Link>
             
             {/* Navigation */}
             <nav className="hidden sm:flex items-center gap-1">
               <Link 
                 href="/dashboard" 
-                className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-[#a0a0a0] transition-colors hover:bg-[#1a1a1a] hover:text-[#f0ece4]"
               >
                 Portfolios
               </Link>
               <Link 
                 href="/templates" 
-                className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-[#a0a0a0] transition-colors hover:bg-[#1a1a1a] hover:text-[#f0ece4]"
               >
                 Templates
               </Link>
@@ -51,10 +51,13 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="hidden sm:inline text-sm text-neutral-500">
+            <span className="hidden sm:inline text-sm text-[#606060]">
               {session.user.email}
             </span>
-            <SignOutButton className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ff6b35] text-sm font-bold text-white">
+              {(session.user.name?.[0] ?? session.user.email?.[0] ?? "U").toUpperCase()}
+            </div>
+            <SignOutButton className="text-sm text-[#a0a0a0] hover:text-[#f0ece4] transition-colors" />
           </div>
         </div>
       </header>

@@ -38,7 +38,7 @@ export function SeedTemplatesButton() {
         {isLoading ? "Seeding..." : "Seed Sample Templates"}
       </Button>
       {result && (
-        <p className={`text-sm ${result.success ? "text-green-600" : "text-red-600"}`}>
+        <p className={`text-sm ${result.success ? "text-[#22c55e]" : "text-red-400"}`}>
           {result.message}
         </p>
       )}
