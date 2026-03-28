@@ -17,33 +17,55 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const session = await getCurrentSession();
 
   if (!session?.user) {
-    redirect("/mvp1-preview");
+    redirect("/");
   }
 
   return (
-    <div className="min-h-screen px-6 py-8 md:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <header className="flex flex-col justify-between gap-4 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] backdrop-blur md:flex-row md:items-center">
-          <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-[var(--muted)]">Dashboard</p>
-            <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">
-              FolioAI workspace
-            </h1>
+    <div className="min-h-screen bg-[#0a0a0a]">
+      {/* Fixed Header */}
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#111111]">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff6b35]">
+                <span className="text-sm font-bold text-white">F</span>
+              </div>
+              <span className="font-semibold tracking-tight text-[#f0ece4]">FolioAI</span>
+            </Link>
+            
+            {/* Navigation */}
+            <nav className="hidden sm:flex items-center gap-1">
+              <Link 
+                href="/dashboard" 
+                className="rounded-lg px-4 py-2 text-sm font-medium text-[#a0a0a0] transition-colors hover:bg-[#1a1a1a] hover:text-[#f0ece4]"
+              >
+                Portfolios
+              </Link>
+              <Link 
+                href="/templates" 
+                className="rounded-lg px-4 py-2 text-sm font-medium text-[#a0a0a0] transition-colors hover:bg-[#1a1a1a] hover:text-[#f0ece4]"
+              >
+                Templates
+              </Link>
+            </nav>
           </div>
 
-          <div className="flex items-center gap-3 text-sm">
-            <Link href="/" className="rounded-full border border-[var(--border)] px-4 py-2">
-              Back to home
-            </Link>
-            <span className="rounded-full bg-white px-4 py-2 text-[var(--muted)]">
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline text-sm text-[#606060]">
               {session.user.email}
             </span>
-            <SignOutButton />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ff6b35] text-sm font-bold text-white">
+              {(session.user.name?.[0] ?? session.user.email?.[0] ?? "U").toUpperCase()}
+            </div>
+            <SignOutButton className="text-sm text-[#a0a0a0] hover:text-[#f0ece4] transition-colors" />
           </div>
-        </header>
+        </div>
+      </header>
 
+      {/* Main Content */}
+      <main className="mx-auto max-w-6xl px-6 py-8">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

@@ -8,7 +8,7 @@ type SignOutButtonProps = {
 };
 
 export function SignOutButton({
-  callbackUrl = "/mvp1-preview",
+  callbackUrl = "/",
   className,
 }: SignOutButtonProps) {
   return (
