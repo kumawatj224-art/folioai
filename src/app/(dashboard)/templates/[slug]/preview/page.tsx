@@ -73,6 +73,44 @@ export default async function TemplatePreviewPage({ params }: Params) {
 
   const previewHtml = renderTemplate(template.htmlTemplate, template.slug, sampleData);
 
+  // Inject script to prevent navigation in preview (only allow anchor scrolling)
+  const previewHtmlWithScript = previewHtml.replace(
+    '</body>',
+    `<script>
+      document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+        
+        const href = link.getAttribute('href');
+        
+        // Allow anchor links for smooth scrolling within the page
+        if (href && href.startsWith('#')) {
+          return; // Let the default anchor behavior work
+        }
+        
+        // Prevent all other navigation (external links, mailto, etc.)
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Show a subtle toast notification
+        const toast = document.createElement('div');
+        toast.textContent = 'Links disabled in preview mode';
+        toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;animation:fadeInOut 2s forwards;font-family:system-ui,sans-serif';
+        
+        // Add animation styles if not already present
+        if (!document.getElementById('toast-styles')) {
+          const style = document.createElement('style');
+          style.id = 'toast-styles';
+          style.textContent = '@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(10px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}90%{opacity:1}100%{opacity:0}}';
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+      }, true);
+    </script></body>`
+  );
+
   return (
     <div className="flex h-screen flex-col bg-[#0a0a0a]">
       {/* Header */}
@@ -93,7 +131,7 @@ export default async function TemplatePreviewPage({ params }: Params) {
         </div>
         
         <div className="flex items-center gap-3">
-          <Link href={`/templates/${template.slug}/create`}>
+          <Link href={`/chat/new?template=${template.slug}`}>
             <Button disabled={!template.isFree}>
               {template.isFree ? "Use This Template" : "Unlock (Coming Soon)"}
             </Button>
@@ -112,7 +150,7 @@ export default async function TemplatePreviewPage({ params }: Params) {
       <div className="flex-1 overflow-auto bg-[#0a0a0a] p-4">
         <div className="mx-auto max-w-5xl overflow-hidden rounded-xl border border-white/[0.08] bg-white shadow-2xl shadow-black/50">
           <iframe
-            srcDoc={previewHtml}
+            srcDoc={previewHtmlWithScript}
             className="h-[800px] w-full"
             title="Template Preview"
           />

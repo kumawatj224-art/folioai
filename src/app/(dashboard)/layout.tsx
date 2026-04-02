@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { getCurrentSession } from "@/lib/auth/session";
 import { isNewAppEnabled } from "@/lib/env/feature-flags";
+import { UsageBannerWrapper } from "@/components/usage/usage-banner-wrapper";
 
 type DashboardLayoutProps = Readonly<{
   children: React.ReactNode;
@@ -64,6 +66,13 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
       {/* Main Content */}
       <main className="mx-auto max-w-6xl px-6 py-8">
+        {/* Usage Banner */}
+        <Suspense fallback={<div className="mb-6 h-14 animate-pulse rounded-xl bg-[#111111]" />}>
+          <div className="mb-6">
+            <UsageBannerWrapper />
+          </div>
+        </Suspense>
+        
         {children}
       </main>
     </div>

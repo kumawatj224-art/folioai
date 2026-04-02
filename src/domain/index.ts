@@ -9,3 +9,4 @@
 export * from "./entities/portfolio";
 export * from "./entities/project";
 export * from "./entities/skill";
+export * from "./entities/subscription";
