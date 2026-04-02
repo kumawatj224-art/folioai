@@ -45,13 +45,21 @@ export type DashboardPortfolioSummary = {
 /**
  * Template options for portfolio generation
  */
-export type PortfolioTemplate = "minimal-dark" | "professional-light" | "colorful";
+export type PortfolioTemplate = 
+  | "enterprise-dark"   // Premium dark theme, amber accents, split-hero with stats
+  | "terminal-dark"     // Developer-focused, green on black, hacker aesthetic
+  | "editorial-light"   // Magazine layout, serif fonts, professional
+  | "gradient-dark"     // Purple/blue gradients, glassmorphism, modern
+  | "brutalist"         // Bold black/white/orange, magazine-grid
+  | "minimal-warm"      // Japanese-inspired, warm tones, serif elegance
+  | "minimal-dark";     // Clean, monochrome dark theme
 
 /**
  * Information the AI collects through conversation
  */
 export type StudentInfo = {
   name: string;
+  bio?: string; // Tagline or short about text
   college: string;
   branch: string;
   graduationYear: string;
@@ -69,10 +77,15 @@ export type StudentInfo = {
     description: string;
   }>;
   achievements: string[];
+  // Coding profiles (for students)
+  githubUsername?: string;
+  leetcodeProfile?: string;
+  codechefProfile?: string;
   socialLinks: {
     github?: string;
     linkedin?: string;
     email?: string;
+    twitter?: string;
   };
 };
 
