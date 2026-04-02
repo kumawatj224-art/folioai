@@ -185,6 +185,10 @@ export const templateRepository = {
     return mapRowToTemplate(data as TemplateRow);
   },
 
+  /**
+   * Upsert templates - insert new ones or update existing ones by slug.
+   * This ensures template changes in code are reflected in the database.
+   */
   async seedTemplates(templates: CreateTemplateInput[]): Promise<number> {
     if (!isSupabaseConfigured()) {
       throw new Error("Supabase not configured");
@@ -192,22 +196,11 @@ export const templateRepository = {
 
     const supabase = getSupabaseServer();
     
-    // Check existing templates
-    const { data: existing } = await supabase
+    // Upsert all templates - update if slug exists, insert if not
+    const { data, error } = await supabase
       .from("templates")
-      .select("slug");
-    
-    const existingSlugs = new Set((existing ?? []).map((t: { slug: string }) => t.slug));
-    const newTemplates = templates.filter(t => !existingSlugs.has(t.slug));
-
-    if (newTemplates.length === 0) {
-      return 0;
-    }
-
-    const { error } = await supabase
-      .from("templates")
-      .insert(
-        newTemplates.map(t => ({
+      .upsert(
+        templates.map(t => ({
           name: t.name,
           slug: t.slug,
           description: t.description,
@@ -219,13 +212,15 @@ export const templateRepository = {
           price_inr: t.priceInr ?? 0,
           sort_order: t.sortOrder ?? 0,
           is_active: true,
-        }))
-      );
+        })),
+        { onConflict: "slug" } // Update existing templates by slug
+      )
+      .select();
 
     if (error) {
       throw new Error(`Failed to seed templates: ${error.message}`);
     }
 
-    return newTemplates.length;
+    return data?.length ?? 0;
   },
 };

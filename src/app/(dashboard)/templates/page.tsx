@@ -154,7 +154,7 @@ function TemplateCard({ template }: { template: { id: string; name: string; slug
         </p>
         
         <div className="mt-4 flex gap-2">
-          <Link href={`/templates/${template.slug}/create`} className="flex-1">
+          <Link href={`/chat/new?template=${template.slug}`} className="flex-1">
             <Button className="w-full" disabled={!template.isFree}>
               {template.isFree ? "Use Template" : "Unlock (Coming Soon)"}
             </Button>
