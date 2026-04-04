@@ -5,7 +5,7 @@
  * Uses Supabase for persistence.
  */
 
-import { getSupabaseServer } from "@/lib/supabase/client";
+import { getSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { 
   UserSubscription, 
   PlanType,
@@ -27,6 +27,12 @@ const CACHE_TTL = 60 * 1000; // 1 minute cache
  * Get or create subscription for user
  */
 export async function getSubscription(userId: string): Promise<UserSubscription> {
+  // Skip database if Supabase not configured
+  if (!isSupabaseConfigured()) {
+    console.log('[Subscription] Supabase not configured, using default');
+    return createDefaultSubscription(userId);
+  }
+
   // Check cache first
   const cached = subscriptionCache.get(userId);
   if (cached && Date.now() < cached.expiresAt) {
@@ -41,8 +47,12 @@ export async function getSubscription(userId: string): Promise<UserSubscription>
     .maybeSingle();
   
   if (error) {
-    console.error('[Subscription] Fetch error:', error);
-    // Return default subscription in-memory on error (don't persist)
+    // Table might not exist yet - silently fall back to default
+    if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
+      console.warn('[Subscription] Table not found, using in-memory default');
+    } else {
+      console.error('[Subscription] DB error:', error.message);
+    }
     return createDefaultSubscription(userId);
   }
   

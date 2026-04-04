@@ -57,3 +57,13 @@ export function getSupabaseClient(): SupabaseClient {
 
   return createClient(supabaseUrl, supabaseAnonKey);
 }
+
+/**
+ * Legacy export for auth code compatibility
+ * Uses service role key - prefer getSupabaseServer() for new code
+ */
+export const supabase = supabaseUrl && supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  : null as unknown as SupabaseClient;
