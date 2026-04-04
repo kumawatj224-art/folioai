@@ -9,6 +9,7 @@ type RegisterBody = {
   email?: string;
   password?: string;
   otp?: string;
+  otpToken?: string;
 };
 
 function badRequest(message: string, status = 400) {
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     const email = body.email?.trim().toLowerCase() ?? "";
     const password = body.password ?? "";
     const otp = body.otp?.trim() ?? "";
+    const otpToken = body.otpToken ?? "";
 
     // Validate action
     if (!action || !["send-otp", "verify-and-register"].includes(action)) {
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
       const result = await sendOTP(email);
       if (result.success) {
         return NextResponse.json(
-          { message: result.message },
+          { message: result.message, otpToken: result.token },
           { status: 200 }
         );
       } else {
@@ -70,8 +72,12 @@ export async function POST(request: Request) {
         return badRequest("Please enter a valid 6-digit code.");
       }
 
-      // Verify OTP
-      const otpValid = await verifyOTP(email, otp);
+      if (!otpToken) {
+        return badRequest("Verification session expired. Please request a new code.");
+      }
+
+      // Verify OTP using JWT token
+      const otpValid = verifyOTP(otpToken, otp, email);
       if (!otpValid) {
         return NextResponse.json(
           { error: "Invalid or expired verification code. Please try again." },

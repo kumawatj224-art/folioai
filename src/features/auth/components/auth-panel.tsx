@@ -22,6 +22,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpToken, setOtpToken] = useState<string | null>(null);
 
   // Handle Send OTP
   const handleSendOTP = async (e: React.FormEvent) => {
@@ -40,6 +41,8 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
       });
 
       if (response.ok) {
+        const data = await response.json();
+        setOtpToken(data.otpToken);
         setOtpStep("otp");
       } else {
         const data = await response.json();
@@ -66,6 +69,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
           action: "verify-and-register",
           email: formState.email,
           otp,
+          otpToken,
           name: formState.name,
           password: formState.password,
         }),
@@ -91,6 +95,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
     setOtpStep("form");
     setOtp("");
     setOtpError(null);
+    setOtpToken(null);
   };
 
   return (

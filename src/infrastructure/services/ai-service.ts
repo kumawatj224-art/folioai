@@ -1,19 +1,51 @@
 /**
  * INFRASTRUCTURE LAYER - AI Service
  * 
- * Azure OpenAI integration for portfolio generation.
- * Aligned with FolioAI Product Document Phase 1.
+ * Multi-provider AI integration for portfolio generation.
+ * Supports: Gemini, Azure OpenAI, OpenAI
  * 
+ * Aligned with FolioAI Product Document Phase 1.
  * The AI collects info through conversation, then generates
  * a complete self-contained HTML file with embedded CSS.
  */
 
 import type { ChatMessage, StudentInfo, PortfolioTemplate } from "@/domain/entities/chat";
 
+// Provider detection
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
 const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT ?? "";
 const AZURE_API_KEY = process.env.AZURE_OPENAI_API_KEY ?? "";
 const DEPLOYMENT_NAME = process.env.AZURE_OPENAI_DEPLOYMENT_NAME ?? "gpt-4o";
 const API_VERSION = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
+
+type AIProvider = "gemini" | "azure" | "openai" | null;
+
+function detectProvider(): AIProvider {
+  // Priority: Gemini > OpenAI > Azure
+  if (GEMINI_API_KEY && !GEMINI_API_KEY.includes("replace")) return "gemini";
+  if (OPENAI_API_KEY && !OPENAI_API_KEY.includes("replace")) return "openai";
+  if (AZURE_API_KEY && !AZURE_API_KEY.includes("replace")) return "azure";
+  return null;
+}
+
+/**
+ * List available Gemini models (for debugging)
+ */
+async function listGeminiModels(): Promise<string[]> {
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    const models = data.models?.map((m: any) => m.name) || [];
+    console.log("✅ Available Gemini models:", models);
+    return models;
+  } catch (error) {
+    console.error("❌ Failed to list models:", error);
+    return [];
+  }
+}
 
 const CONVERSATION_SYSTEM_PROMPT = `You are FolioAI, a friendly AI assistant that helps Indian engineering students create professional portfolio websites for placement season.
 
@@ -63,14 +95,157 @@ const HTML_GENERATION_PROMPT = `Generate a complete, production-ready portfolio 
 Return ONLY the HTML code, no explanations. Start with <!DOCTYPE html> and end with </html>.`;
 
 export async function isAIConfigured(): Promise<boolean> {
-  return Boolean(
-    AZURE_ENDPOINT && 
-    AZURE_API_KEY && 
-    !AZURE_ENDPOINT.includes("your-resource") &&
-    !AZURE_API_KEY.includes("replace")
-  );
+  const provider = detectProvider();
+  if (!provider) {
+    console.warn("⚠️ No AI provider configured. Add GEMINI_API_KEY, OPENAI_API_KEY, or AZURE_OPENAI_API_KEY to .env.local");
+    return false;
+  }
+  console.log(`✅ AI Provider detected: ${provider.toUpperCase()}`);
+  return true;
 }
 
+/**
+ * Call any configured AI provider
+ */
+async function callAIProvider(
+  messages: Array<{ role: string; content: string }>,
+  stream: boolean = false
+): Promise<string> {
+  const provider = detectProvider();
+  
+  if (!provider) {
+    throw new Error("No AI provider configured. Add GEMINI_API_KEY, OPENAI_API_KEY, or AZURE_OPENAI_API_KEY");
+  }
+
+  if (provider === "gemini") {
+    return callGemini(messages, stream);
+  } else if (provider === "openai") {
+    return callOpenAI(messages, stream);
+  } else if (provider === "azure") {
+    return callAzureOpenAI(messages, stream);
+  }
+
+  throw new Error(`Unknown provider: ${provider}`);
+}
+
+/**
+ * Gemini API (Google)
+ */
+async function callGemini(
+  messages: Array<{ role: string; content: string }>,
+  stream: boolean = false
+): Promise<string> {
+  // Use the best available models for your API key
+  // These are verified to work from your API response
+  const modelsToTry = [
+    "gemini-2.5-pro",        // Premium model - best for complex tasks
+    "gemini-2.5-flash",      // Fast and capable - best balance
+    "gemini-2.0-flash-001",  // Stable version
+    "gemini-2.0-flash",      // Latest 2.0
+  ];
+
+  console.log(`📋 Trying Gemini models: ${modelsToTry.join(", ")}`);
+
+  let lastError: Error | null = null;
+
+  for (const model of modelsToTry) {
+    try {
+      return await attemptGeminiCall(model, messages);
+    } catch (error) {
+      lastError = error as Error;
+      console.warn(`⚠️ Model ${model} failed: ${(error as Error).message}`);
+      continue;
+    }
+  }
+
+  throw lastError || new Error("All Gemini models failed");
+}
+
+async function attemptGeminiCall(
+  model: string,
+  messages: Array<{ role: string; content: string }>
+): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+  // Convert OpenAI format to Gemini format
+  const geminiContents = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role === "user" ? "user" : "model",
+      parts: [{ text: m.content }],
+    }));
+
+  const body = {
+    contents: geminiContents,
+    generationConfig: {
+      maxOutputTokens: 4000,
+      temperature: 0.7,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`${model}: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  
+  // Check for API errors in response
+  if (data.error) {
+    throw new Error(`${model}: ${data.error.message}`);
+  }
+
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  
+  if (!content) {
+    throw new Error(`No response from ${model}`);
+  }
+
+  console.log(`✅ Successfully used Gemini model: ${model}`);
+  return content;
+}
+
+/**
+ * OpenAI API (OpenAI direct)
+ */
+async function callOpenAI(
+  messages: Array<{ role: string; content: string }>,
+  stream: boolean = false
+): Promise<string> {
+  const url = "https://api.openai.com/v1/chat/completions";
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages,
+      max_tokens: 4000,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+/**
+ * Azure OpenAI API (Microsoft Azure)
+ */
 async function callAzureOpenAI(
   messages: Array<{ role: string; content: string }>,
   stream: boolean = false
@@ -100,7 +275,105 @@ async function callAzureOpenAI(
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-export async function* streamAzureOpenAI(
+/**
+ * Stream responses from any configured AI provider
+ */
+export async function* streamAIProvider(
+  messages: Array<{ role: string; content: string }>
+): AsyncGenerator<string, void, unknown> {
+  const provider = detectProvider();
+
+  if (!provider) {
+    throw new Error("No AI provider configured");
+  }
+
+  if (provider === "gemini") {
+    yield* streamGemini(messages);
+  } else if (provider === "openai") {
+    yield* streamOpenAI(messages);
+  } else if (provider === "azure") {
+    yield* streamAzureOpenAI(messages);
+  }
+}
+
+/**
+ * Stream from Gemini (basic implementation - Gemini has limited streaming in free tier)
+ */
+async function* streamGemini(
+  messages: Array<{ role: string; content: string }>
+): AsyncGenerator<string, void, unknown> {
+  // Gemini streaming is limited in free tier, so we fetch once and stream in chunks
+  const content = await callGemini(messages, false);
+  // Yield in chunks to simulate streaming
+  const chunkSize = 50;
+  for (let i = 0; i < content.length; i += chunkSize) {
+    yield content.slice(i, i + chunkSize);
+  }
+}
+
+/**
+ * Stream from OpenAI
+ */
+async function* streamOpenAI(
+  messages: Array<{ role: string; content: string }>
+): AsyncGenerator<string, void, unknown> {
+  const url = "https://api.openai.com/v1/chat/completions";
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages,
+      max_tokens: 4000,
+      temperature: 0.7,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenAI streaming error: ${response.status} - ${error}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const data = line.slice(6);
+        if (data === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) yield content;
+        } catch {
+          // Skip malformed JSON
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Stream from Azure OpenAI
+ */
+async function* streamAzureOpenAI(
   messages: Array<{ role: string; content: string }>
 ): AsyncGenerator<string, void, unknown> {
   const url = `${AZURE_ENDPOINT}/openai/deployments/${DEPLOYMENT_NAME}/chat/completions?api-version=${API_VERSION}`;
@@ -169,7 +442,7 @@ export async function generateChatResponse(
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
-  return callAzureOpenAI(apiMessages);
+  return callAIProvider(apiMessages);
 }
 
 export async function generatePortfolioHtml(
@@ -180,7 +453,7 @@ export async function generatePortfolioHtml(
     .replace("{{STUDENT_INFO}}", JSON.stringify(studentInfo, null, 2))
     .replace("{{TEMPLATE}}", template);
 
-  const response = await callAzureOpenAI([
+  const response = await callAIProvider([
     { role: "system", content: "You are a web developer that generates clean, production-ready HTML." },
     { role: "user", content: prompt },
   ]);
@@ -221,7 +494,7 @@ ${conversation}
 
 Return ONLY JSON:`;
 
-  const response = await callAzureOpenAI([
+  const response = await callAIProvider([
     { role: "system", content: "Extract structured data from conversations. Return only valid JSON." },
     { role: "user", content: extractionPrompt },
   ]);
