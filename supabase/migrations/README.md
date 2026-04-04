@@ -3,7 +3,7 @@
 Database schema changes are tracked here. Files are numbered sequentially.
 
 ## Applied Migrations
-
+ 
 ### `000_create_auth_tables.sql`
 - **Tables:** `users`, `otp_verifications`
 - **Purpose:** User registration with password auth and OTP email verification
