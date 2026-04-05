@@ -7,7 +7,7 @@
 
 CREATE TABLE IF NOT EXISTS user_subscriptions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id TEXT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT UNIQUE NOT NULL, -- TEXT to support Google OAuth IDs
   
   -- Plan info
   plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'starter', 'pro', 'lifetime')),
@@ -56,7 +56,7 @@ CREATE TRIGGER update_user_subscriptions_updated_at
 
 CREATE TABLE IF NOT EXISTS custom_domains (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL, -- TEXT to support Google OAuth IDs
   portfolio_id UUID REFERENCES portfolios(id) ON DELETE CASCADE,
   
   -- Domain info

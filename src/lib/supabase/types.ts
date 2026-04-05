@@ -15,18 +15,24 @@ export type Database = {
           id: string;
           email: string;
           name: string | null;
+          password_hash: string | null;
+          password_salt: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           email: string;
           name?: string | null;
+          password_hash?: string | null;
+          password_salt?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           email?: string;
           name?: string | null;
+          password_hash?: string | null;
+          password_salt?: string | null;
           created_at?: string;
         };
       };
