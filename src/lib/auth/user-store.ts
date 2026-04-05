@@ -1,12 +1,8 @@
 import { randomUUID, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { promisify } from "node:util";
+import { supabase } from "@/lib/supabase/client";
 
 const scrypt = promisify(scryptCallback);
-
-const authDataDir = path.join(process.cwd(), ".data");
-const authUsersFile = path.join(authDataDir, "auth-users.json");
 
 export type StoredUser = {
   id: string;
@@ -23,38 +19,8 @@ type CreateUserInput = {
   password: string;
 };
 
-async function ensureStore() {
-  await mkdir(authDataDir, { recursive: true });
-
-  try {
-    await readFile(authUsersFile, "utf8");
-  } catch {
-    await writeFile(authUsersFile, "[]", "utf8");
-  }
-}
-
-async function readUsers(): Promise<StoredUser[]> {
-  await ensureStore();
-
-  const file = await readFile(authUsersFile, "utf8");
-
-  try {
-    const parsed = JSON.parse(file) as StoredUser[];
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeUsers(users: StoredUser[]) {
-  await ensureStore();
-  await writeFile(authUsersFile, JSON.stringify(users, null, 2), "utf8");
-}
-
 async function hashPassword(password: string, salt: string) {
   const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
-
   return derivedKey.toString("hex");
 }
 
@@ -63,40 +29,80 @@ export function normalizeEmail(email: string) {
 }
 
 export async function findUserByEmail(email: string) {
-  const users = await readUsers();
   const normalizedEmail = normalizeEmail(email);
 
-  return users.find((user) => user.email === normalizedEmail) ?? null;
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("email", normalizedEmail)
+    .single();
+
+  if (error) {
+    console.error("Database error:", error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    passwordHash: data.password_hash,
+    passwordSalt: data.password_salt,
+    createdAt: data.created_at,
+  };
 }
 
 export async function createUser({ name, email, password }: CreateUserInput) {
-  const users = await readUsers();
   const normalizedEmail = normalizeEmail(email);
 
-  if (users.some((user) => user.email === normalizedEmail)) {
+  // Check if email already exists
+  const existing = await findUserByEmail(normalizedEmail);
+  if (existing) {
     throw new Error("EMAIL_ALREADY_EXISTS");
   }
 
   const passwordSalt = randomUUID();
   const passwordHash = await hashPassword(password, passwordSalt);
 
-  const user: StoredUser = {
-    id: randomUUID(),
-    name: name.trim(),
-    email: normalizedEmail,
-    passwordHash,
-    passwordSalt,
-    createdAt: new Date().toISOString(),
+  const { data, error } = await supabase
+    .from("users")
+    .insert([
+      {
+        name: name.trim(),
+        email: normalizedEmail,
+        password_hash: passwordHash,
+        password_salt: passwordSalt,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    passwordHash: data.password_hash,
+    passwordSalt: data.password_salt,
+    createdAt: data.created_at,
   };
-
-  users.push(user);
-  await writeUsers(users);
-
-  return user;
 }
 
 export async function verifyUserPassword(user: StoredUser, password: string) {
   const inputHash = await hashPassword(password, user.passwordSalt);
-
-  return timingSafeEqual(Buffer.from(user.passwordHash, "hex"), Buffer.from(inputHash, "hex"));
+  
+  try {
+    timingSafeEqual(
+      Buffer.from(user.passwordHash),
+      Buffer.from(inputHash)
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
