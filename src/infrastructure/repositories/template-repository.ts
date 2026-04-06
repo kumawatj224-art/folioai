@@ -4,7 +4,7 @@
  * Manages portfolio templates in Supabase.
  */
 
-import { getSupabaseServer, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getSupabaseServer, getSupabaseServerFresh, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Template, TemplateSummary, TemplateCategory } from "@/domain/entities/template";
 
 type TemplateRow = {
@@ -194,7 +194,8 @@ export const templateRepository = {
       throw new Error("Supabase not configured");
     }
 
-    const supabase = getSupabaseServer();
+    // Use fresh client to avoid schema cache issues
+    const supabase = getSupabaseServerFresh();
     
     // Upsert all templates - update if slug exists, insert if not
     const { data, error } = await supabase

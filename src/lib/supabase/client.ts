@@ -40,10 +40,33 @@ export function getSupabaseServer(): SupabaseClient {
         autoRefreshToken: false,
         persistSession: false,
       },
+      db: {
+        schema: 'public',
+      },
     });
   }
 
   return serverClient;
+}
+
+/**
+ * Create a fresh Supabase client (bypasses caching)
+ * Use this when schema cache issues occur
+ */
+export function getSupabaseServerFresh(): SupabaseClient {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Supabase server credentials not configured");
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    db: {
+      schema: 'public',
+    },
+  });
 }
 
 /**

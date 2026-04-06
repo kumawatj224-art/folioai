@@ -50,6 +50,13 @@ const INITIAL_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
+const EDIT_MODE_MESSAGE: ChatMessage = {
+  id: "initial",
+  role: "assistant",
+  content: "Welcome back! 👋 Your portfolio data is saved.\n\nWhat would you like to change?\n\n• **Change template** — try a different design\n• **Add info** — new skills, project, or achievement\n• **Update details** — modify existing content\n\nOr just click **Re-Generate** to refresh with the same data!",
+  timestamp: new Date(),
+};
+
 const getTemplateMessage = (templateName: string): ChatMessage => ({
   id: "initial",
   role: "assistant",
@@ -68,6 +75,7 @@ type ChatInterfaceProps = {
   initialMessages?: ChatMessage[];
   initialStudentInfo?: Partial<StudentInfo>;
   initialHtml?: string | null;
+  initialLiveUrl?: string | null;
   templateContext?: TemplateContext | null;
 };
 
@@ -76,13 +84,19 @@ export function ChatInterface({
   initialMessages,
   initialStudentInfo = {},
   initialHtml = null,
+  initialLiveUrl = null,
   templateContext = null,
 }: ChatInterfaceProps) {
   const router = useRouter();
   
-  // Determine initial message based on template context
+  // Determine if we're in edit mode (existing portfolio)
+  const isEditMode = !!portfolioId && !!initialHtml;
+  
+  // Determine initial message based on context
   const defaultMessages = initialMessages || [
-    templateContext ? getTemplateMessage(templateContext.name) : INITIAL_MESSAGE
+    isEditMode 
+      ? EDIT_MODE_MESSAGE 
+      : (templateContext ? getTemplateMessage(templateContext.name) : INITIAL_MESSAGE)
   ];
   
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
@@ -90,12 +104,14 @@ export function ChatInterface({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(initialLiveUrl);
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(initialHtml);
-  const [existingHtml] = useState<string | null>(initialHtml); // Keep original for AI context
+  const [currentPortfolioHtml, setCurrentPortfolioHtml] = useState<string | null>(initialHtml); // Tracks latest HTML for AI context
   const [selectedTemplate, setSelectedTemplate] = useState<PortfolioTemplate>(
     templateContext?.slug as PortfolioTemplate || "minimal-dark"
   );
-  const [readyToGenerate, setReadyToGenerate] = useState(false);
+  const [readyToGenerate, setReadyToGenerate] = useState(isEditMode); // Always ready in edit mode
   const [hasChanges, setHasChanges] = useState(false); // Track if user made changes in edit mode
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +120,6 @@ export function ChatInterface({
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   
-  const isEditMode = !!portfolioId && !!initialHtml;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,7 +182,7 @@ export function ChatInterface({
           messages: newMessages,
           studentInfo,
           action: "chat",
-          existingHtml: existingHtml, // Pass current portfolio HTML for AI context
+          existingHtml: currentPortfolioHtml, // Pass current portfolio HTML for AI context
           templateContext: templateContext ? {
             name: templateContext.name,
             slug: templateContext.slug,
@@ -218,7 +233,7 @@ export function ChatInterface({
           studentInfo,
           action: "generate",
           template: selectedTemplate,
-          existingHtml: existingHtml, // Pass existing HTML for context when regenerating
+          existingHtml: currentPortfolioHtml, // Pass existing HTML for context when regenerating
           templateContext: templateContext ? {
             name: templateContext.name,
             slug: templateContext.slug,
@@ -234,6 +249,7 @@ export function ChatInterface({
       }
 
       setGeneratedHtml(data.html);
+      setCurrentPortfolioHtml(data.html); // Update context for future regenerations
       setHasChanges(false); // Reset after regenerating
       
       // Refresh server components (UsageBanner) to show updated counts
@@ -284,6 +300,103 @@ export function ChatInterface({
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const deployPortfolio = async () => {
+    if (!generatedHtml) return;
+    
+    // Ask for subdomain name
+    const defaultName = studentInfo.name 
+      ? studentInfo.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+      : "";
+    
+    const subdomainInput = window.prompt(
+      "Enter your subdomain name (e.g., 'jai' for jai.getfolioai.in):",
+      defaultName
+    );
+    
+    if (subdomainInput === null) {
+      // User cancelled
+      return;
+    }
+    
+    // Validate and clean subdomain
+    const subdomain = subdomainInput
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 30);
+    
+    if (!subdomain) {
+      setError("Please enter a valid subdomain name");
+      return;
+    }
+    
+    setIsDeploying(true);
+    setError(null);
+
+    try {
+      // Only set title for new portfolios
+      const title = studentInfo.name 
+        ? `${studentInfo.name}'s Portfolio`
+        : "My Portfolio";
+
+      // Create or update portfolio with deployed status
+      const isEditing = !!portfolioId;
+      const url = isEditing ? `/api/portfolios/${portfolioId}` : "/api/portfolios";
+      const method = isEditing ? "PATCH" : "POST";
+
+      // When editing, don't send title to preserve the original
+      const body: Record<string, unknown> = {
+        htmlContent: generatedHtml,
+        chatHistory: messages,
+        status: "deployed",
+        customSubdomain: subdomain, // Send user's chosen subdomain
+      };
+      
+      // Only include title for new portfolios
+      if (!isEditing) {
+        body.title = title;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to deploy");
+      }
+
+      // Use the liveUrl returned from the API
+      const portfolio = data.data;
+      if (!portfolio) {
+        throw new Error("Failed to save portfolio");
+      }
+      
+      // Show appropriate URL based on environment
+      const host = window.location.host;
+      let deployUrl = portfolio.liveUrl;
+      
+      // For localhost, show the local test URL instead of production subdomain
+      if (host.includes("localhost")) {
+        // Extract subdomain from liveUrl (e.g., https://jai.getfolioai.in -> jai)
+        const slugMatch = portfolio.liveUrl?.match(/https?:\/\/([^.]+)\.getfolioai\.in/);
+        const slug = slugMatch ? slugMatch[1] : subdomain;
+        deployUrl = `${window.location.origin}/api/p/${slug}`;
+      }
+      
+      if (deployUrl) {
+        setDeployedUrl(deployUrl);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to deploy");
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -352,14 +465,16 @@ export function ChatInterface({
         setStudentInfo(newInfo);
       }
 
-      // Check if ready to generate
-      const ready = Boolean(
-        newInfo.name &&
-        newInfo.college &&
-        (newInfo.skills?.length ?? 0) >= 2 &&
-        (newInfo.projects?.length ?? 0) >= 1
-      );
+      // Check if ready to generate - only require name to enable generation
+      const ready = Boolean(newInfo.name);
       setReadyToGenerate(ready);
+      console.log('[FolioAI] Resume parsed:', {
+        name: newInfo.name,
+        college: newInfo.college,
+        skillsCount: newInfo.skills?.length ?? 0,
+        projectsCount: newInfo.projects?.length ?? 0,
+        readyToGenerate: ready
+      });
 
       // Add assistant message confirming extraction
       const confirmMessage: ChatMessage = {
@@ -406,13 +521,19 @@ export function ChatInterface({
   };
 
   const templates: { id: PortfolioTemplate; name: string; description: string }[] = [
-    { id: "enterprise-dark", name: "Enterprise Dark", description: "Premium, amber accents" },
-    { id: "terminal-dark", name: "Terminal Dark", description: "Hacker aesthetic, green on black" },
-    { id: "minimal-dark", name: "Minimal Dark", description: "Clean, developer-focused" },
-    { id: "minimal-warm", name: "Minimal Warm", description: "Japanese minimalism" },
-    { id: "editorial-light", name: "Editorial Light", description: "Magazine layout, professional" },
-    { id: "gradient-dark", name: "Gradient Dark", description: "Purple/blue, glassmorphism" },
-    { id: "brutalist", name: "Brutalist", description: "Bold black/white/orange" },
+    // CREATIVE TEMPLATES - recommended
+    { id: "game-hud", name: "🎮 Game HUD", description: "XP bars, achievements, pixel art" },
+    { id: "ios-app", name: "📱 iOS App", description: "iPhone home screen, app icons" },
+    { id: "space-galaxy", name: "🌌 Space Galaxy", description: "Planets, constellations, orbit" },
+    { id: "retro-vhs", name: "📼 Retro VHS", description: "80s neon, scanlines, glitch" },
+    { id: "spotify-player", name: "🎵 Spotify", description: "Music player, playlists" },
+    { id: "dashboard-analytics", name: "📊 Dashboard", description: "Analytics, charts, metrics" },
+    { id: "newspaper-frontpage", name: "📰 Newspaper", description: "Headlines, columns, editorial" },
+    { id: "bento-grid", name: "🧱 Bento Grid", description: "Modern card layout" },
+    // CLASSIC TEMPLATES
+    { id: "terminal-dark", name: "💻 Terminal", description: "Hacker aesthetic, green" },
+    { id: "gradient-dark", name: "🌈 Gradient", description: "Purple/blue, glassmorphism" },
+    { id: "brutalist", name: "⬛ Brutalist", description: "Bold black/white/orange" },
   ];
 
   return (
@@ -448,10 +569,30 @@ export function ChatInterface({
             )}
             
             {/* Show Save when there's generated HTML (new or regenerated) */}
-            {generatedHtml && (
-              <Button size="sm" onClick={savePortfolio} disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save"}
+            {generatedHtml && !deployedUrl && (
+              <Button size="sm" variant="secondary" onClick={savePortfolio} disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Draft"}
               </Button>
+            )}
+            
+            {/* Show Deploy button when there's generated HTML */}
+            {generatedHtml && !deployedUrl && (
+              <Button size="sm" onClick={deployPortfolio} disabled={isDeploying || isLoading}>
+                {isDeploying ? "Deploying..." : "🚀 Deploy"}
+              </Button>
+            )}
+            
+            {/* Show deployed URL */}
+            {deployedUrl && (
+              <a 
+                href={deployedUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-md bg-green-500/20 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/30 transition-colors"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                Live: {deployedUrl.replace("https://", "")}
+              </a>
             )}
           </div>
         </div>
@@ -502,6 +643,59 @@ export function ChatInterface({
         {error && (
           <div className="mx-4 mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
             {error}
+          </div>
+        )}
+
+        {/* Generate Portfolio CTA - Shows when ready but not yet generated */}
+        {!isEditMode && readyToGenerate && !generatedHtml && (
+          <div className="mx-4 mb-3 rounded-xl border border-[#ff6b35]/30 bg-gradient-to-r from-[#ff6b35]/10 to-[#ff8f5a]/10 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#f0ece4]">Ready to generate your portfolio!</p>
+                <p className="text-xs text-[#a0a0a0]">All required info collected</p>
+              </div>
+              <button
+                onClick={generatePortfolio}
+                disabled={isLoading}
+                className="flex items-center gap-2 rounded-lg bg-[#ff6b35] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#ff7f4a] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                    </svg>
+                    Generate Portfolio
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Regenerate CTA - Shows in edit mode when there are changes */}
+        {isEditMode && hasChanges && (
+          <div className="mx-4 mb-3 rounded-xl border border-[#3b82f6]/30 bg-gradient-to-r from-[#3b82f6]/10 to-[#60a5fa]/10 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[#f0ece4]">Ready to update your portfolio</p>
+                <p className="text-xs text-[#a0a0a0]">New changes detected</p>
+              </div>
+              <button
+                onClick={generatePortfolio}
+                disabled={isLoading}
+                className="flex items-center gap-2 rounded-lg bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#4b8df6] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading ? "Regenerating..." : "Regenerate"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -802,6 +996,32 @@ export function ChatInterface({
                         </div>
                       )}
                     </div>
+
+                    {/* Generate Button inside card */}
+                    {studentInfo.name && (
+                      <button
+                        onClick={generatePortfolio}
+                        disabled={isLoading}
+                        className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#ff6b35] to-[#ff8f5a] px-4 py-3 text-sm font-semibold text-white transition-all hover:from-[#ff7f4a] hover:to-[#ff9f6a] disabled:cursor-not-allowed disabled:opacity-50 shadow-lg shadow-[#ff6b35]/20"
+                      >
+                        {isLoading ? (
+                          <>
+                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Cooking...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                            </svg>
+                            Generate Portfolio
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
