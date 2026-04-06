@@ -9,17 +9,17 @@ type EmptyStateProps = {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps): JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-white/80 p-12 text-center">
+    <div className="flex flex-col items-center justify-center py-8 text-center">
       {icon && (
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--muted)]">
+        <div className="mb-4">
           {icon}
         </div>
       )}
-      <h3 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">
+      <h3 className="font-display text-lg font-semibold text-[#f0ece4]">
         {title}
       </h3>
       {description && (
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+        <p className="mx-auto mt-2 max-w-sm text-sm text-[#a0a0a0]">
           {description}
         </p>
       )}

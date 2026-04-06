@@ -1,29 +1,92 @@
-import { createClient } from "@supabase/supabase-js";
+/**
+ * Supabase Client Configuration
+ * 
+ * Server-side client for Supabase database operations.
+ * Uses service role key for backend operations.
+ */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export type Database = {
-  public: {
-    Tables: {
-      users: {
-        Row: {
-          id: string;
-          name: string;
-          email: string;
-          password_hash: string;
-          password_salt: string;
-          created_at: string;
-        };
-        Insert: {
-          name: string;
-          email: string;
-          password_hash: string;
-          password_salt: string;
-        };
-      };
-    };
-  };
-};
+/**
+ * Check if Supabase is configured
+ */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(
+    supabaseUrl && 
+    supabaseServiceKey &&
+    !supabaseUrl.includes("your-project") &&
+    !supabaseServiceKey.includes("replace")
+  );
+}
+
+let serverClient: SupabaseClient | null = null;
+
+/**
+ * Server-side Supabase client with service role (full access)
+ * Use this for backend operations like creating/updating records
+ */
+export function getSupabaseServer(): SupabaseClient {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Supabase server credentials not configured");
+  }
+
+  if (!serverClient) {
+    serverClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      db: {
+        schema: 'public',
+      },
+    });
+  }
+
+  return serverClient;
+}
+
+/**
+ * Create a fresh Supabase client (bypasses caching)
+ * Use this when schema cache issues occur
+ */
+export function getSupabaseServerFresh(): SupabaseClient {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Supabase server credentials not configured");
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    db: {
+      schema: 'public',
+    },
+  });
+}
+
+/**
+ * Client-side Supabase client with anon key (restricted access)
+ * Use this for client-side operations with RLS
+ */
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase client credentials not configured");
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
+
+/**
+ * Legacy export for auth code compatibility
+ * Uses service role key - prefer getSupabaseServer() for new code
+ */
+export const supabase = supabaseUrl && supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  : null as unknown as SupabaseClient;
