@@ -3,6 +3,7 @@
  * 
  * Follows Open/Closed principle - extensible via variants without modification.
  * Uses composition for flexibility.
+ * Dark theme design system with orange accent.
  */
 
 import { forwardRef } from "react";
@@ -18,16 +19,16 @@ type ButtonProps = {
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-[var(--foreground)] text-white hover:opacity-90 shadow-sm",
-  secondary: "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border)] hover:bg-white",
-  ghost: "text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]",
+  primary: "bg-[#ff6b35] text-white hover:opacity-90 shadow-sm",
+  secondary: "bg-[#1a1a1a] text-[#f0ece4] border border-white/[0.15] hover:bg-[#222222] hover:border-white/[0.25]",
+  ghost: "text-[#a0a0a0] hover:text-[#f0ece4] hover:bg-[#1a1a1a] border border-transparent",
   danger: "bg-red-500 text-white hover:bg-red-600",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3 py-1.5 text-sm rounded-lg",
-  md: "px-4 py-2.5 text-sm rounded-xl",
-  lg: "px-6 py-3 text-base rounded-xl",
+  sm: "px-3.5 py-1.5 text-sm rounded-lg gap-1.5",
+  md: "px-4 py-2.5 text-sm rounded-xl gap-2",
+  lg: "px-6 py-3 text-base rounded-xl gap-2",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -46,8 +47,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={`
-          inline-flex items-center justify-center gap-2 font-medium transition
-          disabled:opacity-60 disabled:cursor-not-allowed
+          inline-flex items-center justify-center font-semibold transition-all
+          disabled:opacity-50 disabled:cursor-not-allowed
           ${variantClasses[variant]}
           ${sizeClasses[size]}
           ${fullWidth ? "w-full" : ""}

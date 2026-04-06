@@ -99,7 +99,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
   };
 
   return (
-    <aside className="rounded-3xl border border-[var(--border)] bg-white p-6 shadow-[0_8px_40px_rgba(24,20,17,0.06)] md:p-8">
+    <aside className="rounded-2xl border border-white/[0.08] bg-[#111111] p-8">
       <AuthHeader mode={mode} otpStep={otpStep} />
       <ModeToggle mode={mode} onModeChange={handleModeChange} />
 
@@ -107,7 +107,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
         <div className="mt-6">
           <GoogleSignInButton
             callbackUrl={callbackUrl}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface)]"
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/[0.15] bg-[#1a1a1a] px-4 py-3 text-sm font-medium text-[#f0ece4] transition-all hover:bg-[#222222] hover:border-white/[0.25]"
           />
         </div>
       )}
@@ -143,7 +143,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
           />
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>
+            <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400">{error}</p>
           )}
 
           <SubmitButton mode="signin" isPending={isPending} />
@@ -191,7 +191,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
           />
 
           {(error || otpError) && (
-            <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
+            <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400">
               {otpError || error}
             </p>
           )}
@@ -199,7 +199,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
           <button
             type="submit"
             disabled={otpLoading}
-            className="w-full rounded-xl bg-[var(--foreground)] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-[#ff6b35] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {otpLoading ? "Sending code..." : "Continue"}
           </button>
@@ -209,7 +209,7 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
       {/* Sign Up Form - Step 2: OTP Verification */}
       {mode === "signup" && otpStep === "otp" && (
         <form onSubmit={handleVerifyAndRegister} className="mt-6 space-y-4">
-          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+          <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 text-sm text-blue-400">
             <p>Verification code sent to <strong>{formState.email}</strong></p>
           </div>
 
@@ -226,14 +226,14 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
           />
 
           {otpError && (
-            <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{otpError}</p>
+            <p className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400">{otpError}</p>
           )}
 
           <div className="space-y-2">
             <button
               type="submit"
               disabled={otpLoading || otp.length !== 6}
-              className="w-full rounded-xl bg-[var(--foreground)] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-[#ff6b35] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {otpLoading ? "Verifying..." : "Verify & Create Account"}
             </button>
@@ -241,20 +241,20 @@ export function AuthPanel({ callbackUrl = "/dashboard", googleEnabled }: AuthPan
             <button
               type="button"
               onClick={() => setOtpStep("form")}
-              className="w-full rounded-xl border border-[var(--border)] py-3 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface)]"
+              className="w-full rounded-xl border border-white/[0.15] py-3 text-sm font-medium text-[#f0ece4] transition hover:bg-[#1a1a1a]"
             >
               Back
             </button>
           </div>
 
-          <p className="text-center text-xs text-[var(--muted)]">
+          <p className="text-center text-xs text-[#606060]">
             Didn't receive the code? Check your spam folder or try again.
           </p>
         </form>
       )}
 
       {!googleEnabled && mode === "signin" && (
-        <p className="mt-4 text-center text-xs text-[var(--muted)]">
+        <p className="mt-4 text-center text-xs text-[#606060]">
           Google sign-in not configured
         </p>
       )}
@@ -269,24 +269,24 @@ function AuthHeader({ mode, otpStep }: { mode: AuthMode; otpStep: OTPStep }) {
     <div className="text-center">
       {mode === "signin" ? (
         <>
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-tight">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-[#f0ece4]">
             Sign in
           </h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">Welcome back to FolioAI</p>
+          <p className="mt-2 text-sm text-[#606060]">Welcome back to FolioAI</p>
         </>
       ) : otpStep === "form" ? (
         <>
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-tight">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-[#f0ece4]">
             Create account
           </h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">Start building your portfolio</p>
+          <p className="mt-2 text-sm text-[#606060]">Start building your portfolio</p>
         </>
       ) : (
         <>
-          <h2 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-tight">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-[#f0ece4]">
             Verify your email
           </h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">Enter the code we sent to your inbox</p>
+          <p className="mt-2 text-sm text-[#606060]">Enter the code we sent to your inbox</p>
         </>
       )}
     </div>
@@ -295,11 +295,11 @@ function AuthHeader({ mode, otpStep }: { mode: AuthMode; otpStep: OTPStep }) {
 
 function ModeToggle({ mode, onModeChange }: { mode: AuthMode; onModeChange: (mode: AuthMode) => void }) {
   const baseClasses = "rounded-lg py-2 text-sm font-medium transition";
-  const activeClasses = "bg-white text-[var(--foreground)] shadow-sm";
-  const inactiveClasses = "text-[var(--muted)] hover:text-[var(--foreground)]";
+  const activeClasses = "bg-[#222222] text-[#f0ece4] shadow-sm";
+  const inactiveClasses = "text-[#606060] hover:text-[#f0ece4]";
 
   return (
-    <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-[var(--surface)] p-1">
+    <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-[#1a1a1a] p-1">
       <button
         type="button"
         onClick={() => onModeChange("signin")}
@@ -321,9 +321,9 @@ function ModeToggle({ mode, onModeChange }: { mode: AuthMode; onModeChange: (mod
 function Divider() {
   return (
     <div className="mt-6 flex items-center gap-3">
-      <span className="h-px flex-1 bg-[var(--border)]" />
-      <span className="text-xs text-[var(--muted)]">or continue with email</span>
-      <span className="h-px flex-1 bg-[var(--border)]" />
+      <span className="h-px flex-1 bg-white/[0.08]" />
+      <span className="text-xs text-[#606060]">or continue with email</span>
+      <span className="h-px flex-1 bg-white/[0.08]" />
     </div>
   );
 }
@@ -333,7 +333,7 @@ function SubmitButton({ mode, isPending }: { mode: AuthMode; isPending: boolean 
     <button
       type="submit"
       disabled={isPending}
-      className="w-full rounded-xl bg-[var(--foreground)] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-xl bg-[#ff6b35] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {isPending ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
     </button>
