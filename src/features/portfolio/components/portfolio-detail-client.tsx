@@ -49,10 +49,11 @@ export function PortfolioDetailClient({ portfolioId }: PortfolioDetailClientProp
     setError(null);
 
     try {
-      const response = await fetch("/api/deploy", {
-        method: "POST",
+      // Update portfolio status to deployed
+      const response = await fetch(`/api/portfolios/${portfolioId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ portfolioId }),
+        body: JSON.stringify({ status: "deployed" }),
       });
 
       const data = await response.json();
@@ -61,9 +62,7 @@ export function PortfolioDetailClient({ portfolioId }: PortfolioDetailClientProp
         throw new Error(data.error || "Deployment failed");
       }
 
-      const refreshResponse = await fetch(`/api/portfolios/${portfolioId}`);
-      const refreshData = await refreshResponse.json();
-      setPortfolio(refreshData.data);
+      setPortfolio(data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deployment failed");
     } finally {
@@ -77,6 +76,19 @@ export function PortfolioDetailClient({ portfolioId }: PortfolioDetailClientProp
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const getVisitUrl = (liveUrl: string): string => {
+    // Extract subdomain from production URL
+    const slugMatch = liveUrl.match(/https?:\/\/([^.]+)\.getfolioai\.in/);
+    const slug = slugMatch ? slugMatch[1] : null;
+    
+    // For localhost, use local API route
+    const isLocalhost = window.location.host.includes("localhost");
+    if (isLocalhost && slug) {
+      return `/api/p/${slug}`;
+    }
+    return liveUrl;
   };
 
   if (loading) {
@@ -137,9 +149,20 @@ export function PortfolioDetailClient({ portfolioId }: PortfolioDetailClientProp
           </Link>
           
           {portfolio.liveUrl && (
-            <Button variant="secondary" size="sm" onClick={copyUrl}>
-              {copied ? "Copied!" : "Copy URL"}
-            </Button>
+            <>
+              <Button variant="secondary" size="sm" onClick={copyUrl}>
+                {copied ? "Copied!" : "Copy URL"}
+              </Button>
+              <a 
+                href={getVisitUrl(portfolio.liveUrl)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="secondary" size="sm">
+                  Visit Site ↗
+                </Button>
+              </a>
+            </>
           )}
           
           <Button size="sm" onClick={handleDeploy} disabled={deploying}>
