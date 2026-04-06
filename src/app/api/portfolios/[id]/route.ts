@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-    const { title, htmlContent, liveUrl, status, chatHistory } = body;
+    const { title, htmlContent, liveUrl, status, chatHistory, customSubdomain } = body;
 
     // Handle liveUrl update separately (also sets status to deployed)
     if (liveUrl !== undefined) {
@@ -73,7 +73,40 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (status !== undefined) updates.status = status;
     if (chatHistory !== undefined) updates.chatHistory = chatHistory;
 
+    // If deploying, use custom subdomain or generate from title
+    if (status === "deployed") {
+      let slug: string;
+      
+      if (customSubdomain) {
+        // Use user-provided subdomain
+        slug = customSubdomain
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 30);
+      } else {
+        // Fallback: generate from portfolio title
+        const portfolioTitle = portfolio.title;
+        const name = portfolioTitle.replace(/'s Portfolio$/i, "").trim();
+        slug = name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 30);
+      }
+      
+      if (!slug || slug === "my-portfolio") {
+        slug = `portfolio-${Date.now().toString(36)}`;
+      }
+      
+      updates.liveUrl = `https://${slug}.getfolioai.in`;
+    }
+
     const result = await chatPortfolioRepository.update(id, updates);
+
+    if (!result) {
+      return NextResponse.json({ error: "Failed to update portfolio" }, { status: 500 });
+    }
 
     return NextResponse.json({ data: result });
   } catch {

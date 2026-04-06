@@ -5,6 +5,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { VisitButton } from "@/components/ui/visit-button";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
 
 export default async function DashboardPage() {
@@ -85,10 +86,13 @@ export default async function DashboardPage() {
                 </Link>
                 <Link 
                   href={`/portfolio/${portfolio.id}`}
-                  className="flex-1 rounded-lg bg-[#1a1a1a] border border-white/[0.15] py-2 text-center text-xs font-medium text-[#f0ece4] transition-colors hover:bg-[#ff6b35] hover:border-[#ff6b35]"
+                  className="flex-1 rounded-lg bg-[#1a1a1a] border border-white/[0.15] py-2 text-center text-xs font-medium text-[#f0ece4] transition-colors hover:bg-[#222] hover:border-white/[0.2]"
                 >
                   View
                 </Link>
+                {portfolio.liveUrl && (
+                  <VisitButton liveUrl={portfolio.liveUrl} />
+                )}
               </div>
             </div>
           ))}

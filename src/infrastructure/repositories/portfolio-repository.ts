@@ -54,20 +54,51 @@ export type CreatePortfolioInput = {
   title: string;
   htmlContent: string;
   chatHistory: ChatMessage[];
+  slug?: string; // Optional - will be auto-generated if not provided
 };
 
 export type UpdatePortfolioInput = {
   title?: string;
+  slug?: string;
   htmlContent?: string;
   liveUrl?: string;
   status?: PortfolioStatus;
   chatHistory?: ChatMessage[];
 };
 
+/**
+ * Generate a URL-safe slug from a title
+ */
+function generateSlug(title: string, existingSlugs: string[] = []): string {
+  let slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  
+  if (!slug) slug = 'portfolio';
+  
+  const baseSlug = slug;
+  let counter = 0;
+  
+  while (existingSlugs.includes(slug)) {
+    counter++;
+    slug = `${baseSlug}-${counter}`;
+  }
+  
+  return slug;
+}
+
 const filePortfolioRepository = {
   async findById(id: string): Promise<Portfolio | null> {
     const portfolios = await readPortfolios();
     return portfolios.find((p) => p.id === id) ?? null;
+  },
+
+  async findBySlug(slug: string): Promise<Portfolio | null> {
+    const portfolios = await readPortfolios();
+    return portfolios.find((p) => p.slug === slug && p.status === "deployed") ?? null;
   },
 
   async findByUserId(userId: string): Promise<Portfolio[]> {
@@ -89,10 +120,15 @@ const filePortfolioRepository = {
   async create(input: CreatePortfolioInput): Promise<Portfolio> {
     const portfolios = await readPortfolios();
     
+    // Generate unique slug
+    const existingSlugs = portfolios.map(p => p.slug).filter(Boolean) as string[];
+    const slug = input.slug || generateSlug(input.title, existingSlugs);
+    
     const portfolio: Portfolio = {
       id: randomUUID(),
       userId: input.userId,
       title: input.title,
+      slug,
       htmlContent: input.htmlContent,
       liveUrl: null,
       status: "draft",
@@ -155,6 +191,7 @@ type PortfolioRow = {
   id: string;
   user_id: string;
   title: string;
+  slug?: string | null;  // Optional - column may not exist
   html_content: string | null;
   live_url: string | null;
   status: string;
@@ -166,6 +203,7 @@ type PortfolioRow = {
 type PortfolioSummaryRow = {
   id: string;
   title: string;
+  slug?: string | null;  // Optional - column may not exist
   status: string;
   live_url: string | null;
   updated_at: string;
@@ -176,6 +214,7 @@ function mapDbToPortfolio(row: PortfolioRow): Portfolio {
     id: row.id,
     userId: row.user_id,
     title: row.title,
+    slug: row.slug ?? null,
     htmlContent: row.html_content ?? "",
     liveUrl: row.live_url,
     status: row.status as PortfolioStatus,
@@ -192,6 +231,24 @@ const supabasePortfolioRepository = {
       .from("portfolios")
       .select("*")
       .eq("id", id)
+      .single();
+
+    if (error || !data) return null;
+    return mapDbToPortfolio(data as PortfolioRow);
+  },
+
+  async findBySlug(slug: string): Promise<Portfolio | null> {
+    const supabase = getSupabaseServer();
+    
+    // Since slug column may not exist, search by live_url pattern
+    // live_url format: https://{slug}.getfolioai.in
+    const liveUrlPattern = `https://${slug}.getfolioai.in`;
+    
+    const { data, error } = await supabase
+      .from("portfolios")
+      .select("*")
+      .eq("live_url", liveUrlPattern)
+      .eq("status", "deployed")
       .single();
 
     if (error || !data) return null;
@@ -232,6 +289,7 @@ const supabasePortfolioRepository = {
 
   async create(input: CreatePortfolioInput): Promise<Portfolio> {
     const supabase = getSupabaseServer();
+    
     const { data, error } = await supabase
       .from("portfolios")
       .insert({
@@ -256,10 +314,13 @@ const supabasePortfolioRepository = {
     
     const updateData: Record<string, unknown> = {};
     if (input.title !== undefined) updateData.title = input.title;
+    // Skip slug - column may not exist in database yet
     if (input.htmlContent !== undefined) updateData.html_content = input.htmlContent;
     if (input.liveUrl !== undefined) updateData.live_url = input.liveUrl;
     if (input.status !== undefined) updateData.status = input.status;
     if (input.chatHistory !== undefined) updateData.chat_history = input.chatHistory;
+
+    console.log("[portfolio-repository] Updating portfolio:", id, "with:", Object.keys(updateData));
 
     const { data, error } = await supabase
       .from("portfolios")
@@ -268,7 +329,14 @@ const supabasePortfolioRepository = {
       .select()
       .single();
 
-    if (error || !data) return null;
+    if (error) {
+      console.error("[portfolio-repository] Update error:", error.message, error.details, error.hint);
+      return null;
+    }
+    if (!data) {
+      console.error("[portfolio-repository] No data returned after update");
+      return null;
+    }
     return mapDbToPortfolio(data as PortfolioRow);
   },
 

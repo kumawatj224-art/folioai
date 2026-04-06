@@ -2,21 +2,61 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import { createRepositories } from "@/infrastructure/repositories/file-repository";
+import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
 import { isNewAppEnabled } from "@/lib/env/feature-flags";
+import type { Portfolio } from "@/domain/entities/chat";
+import type { Portfolio as LegacyPortfolio } from "@/domain/entities/portfolio";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+type PortfolioResult = 
+  | { type: "ai"; portfolio: Portfolio }
+  | { type: "legacy"; portfolio: LegacyPortfolio }
+  | null;
+
+/**
+ * Try to find portfolio in either AI-generated or legacy system
+ */
+async function findPortfolioBySlug(slug: string): Promise<PortfolioResult> {
+  // First check AI-generated portfolios (new system)
+  const aiPortfolio = await chatPortfolioRepository.findBySlug(slug);
+  if (aiPortfolio?.htmlContent) {
+    return { type: "ai", portfolio: aiPortfolio };
+  }
+  
+  // Fallback to legacy structured portfolios
+  const { portfolios } = createRepositories();
+  const legacyPortfolio = await portfolios.findBySlug(slug);
+  if (legacyPortfolio) {
+    return { type: "legacy", portfolio: legacyPortfolio };
+  }
+  
+  return null;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const { portfolios } = createRepositories();
-  const portfolio = await portfolios.findBySlug(slug);
+  const result = await findPortfolioBySlug(slug);
 
-  if (!portfolio) {
+  if (!result) {
     return { title: "Portfolio Not Found | FolioAI" };
   }
 
+  if (result.type === "ai") {
+    return {
+      title: `${result.portfolio.title} | FolioAI`,
+      description: `Portfolio created with FolioAI`,
+      openGraph: {
+        title: result.portfolio.title,
+        type: "profile",
+      },
+    };
+  }
+
+  // Legacy portfolio metadata
+  const portfolio = result.portfolio;
   return {
     title: `${portfolio.displayName} | FolioAI`,
     description: portfolio.headline || `${portfolio.displayName}'s portfolio`,
@@ -36,14 +76,35 @@ export default async function PortfolioPage({ params }: PageProps) {
   }
 
   const { slug } = await params;
-  const { portfolios, projects, skills } = createRepositories();
-  
-  const portfolio = await portfolios.findBySlug(slug);
+  const result = await findPortfolioBySlug(slug);
 
-  if (!portfolio) {
+  if (!result) {
     notFound();
   }
 
+  // For AI-generated portfolios, serve the raw HTML directly
+  if (result.type === "ai" && result.portfolio.htmlContent) {
+    return (
+      <html>
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>{result.portfolio.title} | FolioAI</title>
+        </head>
+        <body 
+          dangerouslySetInnerHTML={{ __html: result.portfolio.htmlContent }} 
+        />
+      </html>
+    );
+  }
+
+  // Legacy structured portfolio rendering - only happens for type "legacy"
+  if (result.type !== "legacy") {
+    notFound();
+  }
+  
+  const portfolio = result.portfolio;
+  const { projects, skills } = createRepositories();
   const portfolioProjects = await projects.findByPortfolioId(portfolio.id);
   const portfolioSkills = await skills.findByPortfolioId(portfolio.id);
 
