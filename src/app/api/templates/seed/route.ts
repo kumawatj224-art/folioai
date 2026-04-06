@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { templateRepository } from "@/infrastructure/repositories/template-repository";
 import { SAMPLE_TEMPLATES } from "@/data/sample-templates";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured, getSupabaseServer } from "@/lib/supabase/client";
 
 /**
  * POST /api/templates/seed
@@ -18,6 +18,18 @@ export async function POST() {
         { error: "Supabase not configured. Cannot seed templates." },
         { status: 503 }
       );
+    }
+
+    // Force schema refresh by making a simple query first
+    const supabase = getSupabaseServer();
+    const { error: pingError } = await supabase.from("templates").select("id").limit(1);
+    
+    if (pingError?.message?.includes("schema cache")) {
+      // If schema cache issue, try raw RPC approach
+      const { error: rpcError } = await supabase.rpc("reload_schema_cache");
+      if (rpcError) {
+        console.log("Schema cache reload failed, trying direct insert...");
+      }
     }
 
     const seededCount = await templateRepository.seedTemplates(SAMPLE_TEMPLATES);

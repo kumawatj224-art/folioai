@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { ChatInterface } from "@/features/chat/components/chat-interface";
+import { LiveUrlLink } from "@/components/ui/live-url-link";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
 import type { ChatMessage } from "@/domain/entities/chat";
 
@@ -57,11 +58,14 @@ export default async function EditChatPage({ params }: PageProps) {
             <h1 className="font-display font-semibold text-[#f0ece4]">Edit: {portfolio.title}</h1>
           </div>
           <div className="flex items-center gap-4">
+            {portfolio.liveUrl && (
+              <LiveUrlLink liveUrl={portfolio.liveUrl} />
+            )}
             <Link 
               href={`/portfolio/${id}`} 
               className="text-sm text-[#ff6b35] hover:text-[#ff9f1c] transition-colors"
             >
-              View Portfolio →
+              Preview →
             </Link>
             <span className="text-sm text-[#606060]">{session.user.email}</span>
           </div>
@@ -73,6 +77,7 @@ export default async function EditChatPage({ params }: PageProps) {
           portfolioId={id}
           initialMessages={initialMessages}
           initialHtml={portfolio.htmlContent}
+          initialLiveUrl={portfolio.liveUrl}
         />
       </main>
     </div>
