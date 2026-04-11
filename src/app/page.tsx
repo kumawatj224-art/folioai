@@ -301,7 +301,7 @@ export default async function HomePage() {
       {/* Footer */}
       <footer className="border-t border-white/[0.08] py-8">
         <div className="mx-auto max-w-6xl px-6 text-center">
-          <p className="text-sm text-[#606060]">
+          <p className="text-sm text-[#606060]" suppressHydrationWarning>
             © {new Date().getFullYear()} {siteConfig.name}. Built for students.
           </p>
         </div>
