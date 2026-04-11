@@ -3,118 +3,49 @@ import { NextResponse } from "next/server";
 
 import { isNewAppEnabled } from "@/lib/env/feature-flags";
 
-// Main app domains (not subdomains)
-const MAIN_DOMAINS = [
-  "getfolioai.in",
-  "www.getfolioai.in",
-  "folioai.in",
-  "www.folioai.in",
-  "folioai.vercel.app",
-  "localhost",
-  "localhost:3000",
-];
-
 const bypassPrefixes = ["/_next", "/api", "/favicon.ico", "/robots.txt", "/sitemap.xml", "/index.html"];
 
-// Static file extensions to bypass
-const staticExtensions = [".ico", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".css", ".js", ".woff", ".woff2", ".ttf"];
+export function middleware(req: NextRequest) {
+  const host = req.headers.get("host") || "";
+  const { pathname } = req.nextUrl;
 
-/**
- * Extract subdomain from hostname
- * e.g., "johndoe.folioai.in" -> "johndoe"
- * e.g., "folioai.in" -> null
- */
-function extractSubdomain(hostname: string): string | null {
-  // Remove port if present
-  const host = hostname.split(":")[0];
-  
-  // Skip if it's a main domain
-  if (MAIN_DOMAINS.some(d => d.startsWith(host) || host === d)) {
-    return null;
-  }
-  
-  // Check for subdomain pattern: subdomain.getfolioai.in or subdomain.folioai.in
-  // or subdomain.folioai.vercel.app (for preview deployments)
-  const subdomainMatch = host.match(/^([a-z0-9-]+)\.(getfolioai\.in|folioai\.in|folioai\.vercel\.app)$/i);
-  if (subdomainMatch) {
-    const subdomain = subdomainMatch[1].toLowerCase();
-    // Skip www and other reserved subdomains
-    if (subdomain === "www" || subdomain === "api" || subdomain === "app") {
-      return null;
-    }
-    return subdomain;
-  }
-  
-  // For localhost development, check for subdomain.localhost:3000 pattern
-  if (host.endsWith(".localhost") || host.match(/^[a-z0-9-]+\.localhost$/i)) {
-    const subdomain = host.replace(/\.localhost$/, "").toLowerCase();
-    if (subdomain && subdomain !== "www") {
-      return subdomain;
-    }
-  }
-  
-  return null;
-}
+  // Extract subdomain: jai.getfolioai.in -> jai
+  const subdomain = host.split(".")[0];
 
-export function middleware(request: NextRequest) {
-  const hostname = request.headers.get("host") || "";
-  const { pathname } = request.nextUrl;
-  
-  // DEBUG: Log all requests
-  console.log(`[middleware] START - host: ${hostname}, pathname: ${pathname}, url: ${request.url}`);
-  
-  // Check for subdomain-based portfolio access
-  const subdomain = extractSubdomain(hostname);
-  console.log(`[middleware] subdomain extracted: ${subdomain}`);
-  
-  if (subdomain) {
-    // Bypass static files and assets (return 404 for static files on subdomains - the portfolio HTML is self-contained)
+  // Check if this is a portfolio subdomain request
+  const isPortfolioSubdomain = 
+    host.includes("getfolioai.in") &&
+    subdomain !== "www" &&
+    subdomain !== "getfolioai" &&
+    !host.startsWith("getfolioai.in");
+
+  console.log(`[middleware] host=${host}, subdomain=${subdomain}, isPortfolio=${isPortfolioSubdomain}, pathname=${pathname}`);
+
+  if (isPortfolioSubdomain) {
+    // Skip API and static assets
     if (bypassPrefixes.some((prefix) => pathname.startsWith(prefix))) {
-      // For subdomains, static file requests should 404 since portfolio HTML is self-contained
-      // The middleware matcher should skip these, but just in case
-      return new NextResponse(null, { status: 404 });
+      return NextResponse.next();
     }
-    
-    // Skip static file extensions
-    if (staticExtensions.some((ext) => pathname.toLowerCase().endsWith(ext))) {
-      return new NextResponse(null, { status: 404 });
-    }
-    
-    // Only serve portfolio for root path
-    if (pathname !== "/" && pathname !== "") {
-      return new NextResponse(null, { status: 404 });
-    }
-    
-    // Rewrite to API route that serves raw HTML
-    // e.g., johndoe.folioai.in -> /api/p/johndoe
-    const url = request.nextUrl.clone();
-    url.pathname = `/api/p/${subdomain}`;
+
+    // Rewrite to portfolio API
+    const url = new URL(`/api/p/${subdomain}`, req.url);
     console.log(`[middleware] Rewriting to: ${url.pathname}`);
     return NextResponse.rewrite(url);
   }
-  
-  // Regular app routing
+
+  // Regular app routing for main domain
   if (isNewAppEnabled()) {
     return NextResponse.next();
   }
 
-  if (bypassPrefixes.some((prefix) => pathname.startsWith(prefix))) {
-    return NextResponse.next();
+  // Demo mode - redirect to static page
+  if (!pathname.includes(".") && !bypassPrefixes.some((p) => pathname.startsWith(p))) {
+    return NextResponse.redirect(new URL("/index.html", req.url));
   }
 
-  if (pathname.includes(".")) {
-    return NextResponse.next();
-  }
-
-  // Redirect to index.html for demo mode instead of rewrite
-  // This ensures the static file is served without Next.js page processing
-  const demoUrl = request.nextUrl.clone();
-  demoUrl.pathname = "/index.html";
-
-  return NextResponse.redirect(demoUrl);
+  return NextResponse.next();
 }
 
 export const config = {
-  // Match all paths
   matcher: ["/((?!_next/static|_next/image).*)"],
 };

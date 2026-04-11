@@ -1,16 +1,4 @@
 {
-  "framework": "nextjs",
-  "rewrites": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "(?<subdomain>(?!www)[a-z0-9-]+)\\.getfolioai\\.in"
-        }
-      ],
-      "destination": "/api/p/:subdomain"
-    }
-  ]
+  "framework": "nextjs"
 }
 
