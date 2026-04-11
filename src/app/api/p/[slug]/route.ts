@@ -14,11 +14,15 @@ type RouteParams = {
 export async function GET(request: Request, { params }: RouteParams) {
   const { slug } = await params;
   
+  console.log("[api/p] Request for slug:", slug);
+  
   if (!slug) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   const portfolio = await chatPortfolioRepository.findBySlug(slug);
+  
+  console.log("[api/p] Portfolio found:", !!portfolio, "status:", portfolio?.status, "hasHtml:", !!portfolio?.htmlContent);
 
   if (!portfolio || portfolio.status !== "deployed" || !portfolio.htmlContent) {
     return new NextResponse(
