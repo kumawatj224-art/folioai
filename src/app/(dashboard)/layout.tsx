@@ -44,10 +44,10 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
                 Portfolios
               </Link>
               <Link 
-                href="/templates" 
+                href="/pricing" 
                 className="rounded-lg px-4 py-2 text-sm font-medium text-[#a0a0a0] transition-colors hover:bg-[#1a1a1a] hover:text-[#f0ece4]"
               >
-                Templates
+                Pricing
               </Link>
             </nav>
           </div>

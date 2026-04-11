@@ -244,15 +244,23 @@ const supabasePortfolioRepository = {
     // live_url format: https://{slug}.getfolioai.in
     const liveUrlPattern = `https://${slug}.getfolioai.in`;
     
+    console.log("[findBySlug] Looking for slug:", slug, "with live_url:", liveUrlPattern);
+    
+    // Use limit(1) with order to get the most recently updated portfolio
+    // (handles duplicate live_url edge cases)
     const { data, error } = await supabase
       .from("portfolios")
       .select("*")
       .eq("live_url", liveUrlPattern)
       .eq("status", "deployed")
-      .single();
+      .order("updated_at", { ascending: false })
+      .limit(1);
 
-    if (error || !data) return null;
-    return mapDbToPortfolio(data as PortfolioRow);
+    const portfolio = data?.[0];
+    console.log("[findBySlug] Result:", { found: !!portfolio, count: data?.length, error: error?.message });
+    
+    if (error || !portfolio) return null;
+    return mapDbToPortfolio(portfolio as PortfolioRow);
   },
 
   async findByUserId(userId: string): Promise<Portfolio[]> {
