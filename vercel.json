@@ -2,11 +2,11 @@
   "framework": "nextjs",
   "rewrites": [
     {
-      "source": "/",
+      "source": "/:path*",
       "has": [
         {
           "type": "host",
-          "value": "(?<subdomain>.+)\\.getfolioai\\.in"
+          "value": "(?<subdomain>(?!www)[a-z0-9-]+)\\.getfolioai\\.in"
         }
       ],
       "destination": "/api/p/:subdomain"
