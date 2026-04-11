@@ -60,9 +60,12 @@ export function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
   
+  // DEBUG: Log all requests
+  console.log(`[middleware] START - host: ${hostname}, pathname: ${pathname}, url: ${request.url}`);
+  
   // Check for subdomain-based portfolio access
   const subdomain = extractSubdomain(hostname);
-  console.log(`[middleware] host: ${hostname}, pathname: ${pathname}, subdomain: ${subdomain}`);
+  console.log(`[middleware] subdomain extracted: ${subdomain}`);
   
   if (subdomain) {
     // Bypass static files and assets (return 404 for static files on subdomains - the portfolio HTML is self-contained)
@@ -112,9 +115,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match all requests except static files/assets
-  matcher: [
-    "/",
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf)).*)",
-  ],
+  // Match all paths
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };
