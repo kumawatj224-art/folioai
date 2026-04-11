@@ -16,6 +16,9 @@ const MAIN_DOMAINS = [
 
 const bypassPrefixes = ["/_next", "/api", "/favicon.ico", "/robots.txt", "/sitemap.xml", "/index.html"];
 
+// Static file extensions to bypass
+const staticExtensions = [".ico", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".css", ".js", ".woff", ".woff2", ".ttf"];
+
 /**
  * Extract subdomain from hostname
  * e.g., "johndoe.folioai.in" -> "johndoe"
@@ -62,9 +65,21 @@ export function middleware(request: NextRequest) {
   console.log(`[middleware] host: ${hostname}, pathname: ${pathname}, subdomain: ${subdomain}`);
   
   if (subdomain) {
-    // Bypass static files and assets
+    // Bypass static files and assets (return 404 for static files on subdomains - the portfolio HTML is self-contained)
     if (bypassPrefixes.some((prefix) => pathname.startsWith(prefix))) {
-      return NextResponse.next();
+      // For subdomains, static file requests should 404 since portfolio HTML is self-contained
+      // The middleware matcher should skip these, but just in case
+      return new NextResponse(null, { status: 404 });
+    }
+    
+    // Skip static file extensions
+    if (staticExtensions.some((ext) => pathname.toLowerCase().endsWith(ext))) {
+      return new NextResponse(null, { status: 404 });
+    }
+    
+    // Only serve portfolio for root path
+    if (pathname !== "/" && pathname !== "") {
+      return new NextResponse(null, { status: 404 });
     }
     
     // Rewrite to API route that serves raw HTML
@@ -97,6 +112,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match all requests
-  matcher: ["/", "/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Match all requests except static files/assets
+  matcher: [
+    "/",
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf)).*)",
+  ],
 };
