@@ -11,6 +11,17 @@ const bypassPrefixes = [
   "/api/",  // Bypass API routes
 ];
 
+// Reserved subdomains that should NOT be treated as portfolio slugs
+const reservedSubdomains = [
+  "www",
+  "ppe",      // Pre-production environment
+  "staging",
+  "dev",
+  "api",
+  "admin",
+  "app",
+];
+
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
   const { pathname } = req.nextUrl;
@@ -23,7 +34,7 @@ export function middleware(req: NextRequest) {
   const isPortfolioSubdomain =
     parts.length > 2 && // ensures subdomain exists
     hostname.endsWith("getfolioai.in") &&
-    subdomain !== "www";
+    !reservedSubdomains.includes(subdomain);
 
   console.log(
     `[middleware] host=${host}, subdomain=${subdomain}, isPortfolio=${isPortfolioSubdomain}, pathname=${pathname}`
@@ -36,11 +47,19 @@ export function middleware(req: NextRequest) {
 
   // Handle portfolio subdomain
   if (isPortfolioSubdomain) {
-    const url = new URL(`/p/${subdomain}`, req.url);
-    return NextResponse.rewrite(url);
+    const url = req.nextUrl.clone();
+    url.pathname = `/p/${subdomain}${pathname === "/" ? "" : pathname}`;
+    console.log(`[middleware] Rewriting to: ${url.pathname}`);
+    const response = NextResponse.rewrite(url);
+    response.headers.set("x-middleware-rewrite", url.pathname);
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set("x-middleware-executed", "true");
+  response.headers.set("x-subdomain", subdomain);
+  response.headers.set("x-is-portfolio", String(isPortfolioSubdomain));
+  return response;
 }
 
 export const config = {
