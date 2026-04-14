@@ -11,16 +11,20 @@ const bypassPrefixes = [
   "/api/",  // Bypass API routes
 ];
 
-// Reserved subdomains that should NOT be treated as portfolio slugs
+// Reserved subdomains that should NOT be treated as portfolio slugs (on root domain)
 const reservedSubdomains = [
   "www",
-  "ppe",      // Pre-production environment
+  "ppe",      // Pre-production environment (root access)
   "staging",
   "dev",
   "api",
   "admin",
   "app",
 ];
+
+// Environment subdomains that support nested portfolio subdomains
+// e.g., portfolio.ppe.getfolioai.in, portfolio.staging.getfolioai.in
+const environmentSubdomains = ["ppe", "staging", "dev"];
 
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
@@ -29,15 +33,29 @@ export function middleware(req: NextRequest) {
   const hostname = host.split(":")[0]; // remove port
   const parts = hostname.split(".");
 
-  const subdomain = parts[0];
+  // Detect portfolio subdomain across different environments
+  let portfolioSlug: string | null = null;
 
-  const isPortfolioSubdomain =
-    parts.length > 2 && // ensures subdomain exists
-    hostname.endsWith("getfolioai.in") &&
-    !reservedSubdomains.includes(subdomain);
+  const isProduction = hostname.endsWith("getfolioai.in");
+  const isLocalTest = parts.length === 2 && parts[1] === "localhost";
+
+  // Production: portfolio.getfolioai.in (3 parts)
+  if (parts.length === 3 && isProduction && !reservedSubdomains.includes(parts[0])) {
+    portfolioSlug = parts[0];
+  }
+  // Environment subdomain: portfolio.ppe.getfolioai.in (4 parts)
+  else if (parts.length === 4 && isProduction && environmentSubdomains.includes(parts[1])) {
+    portfolioSlug = parts[0];
+  }
+  // Local test: portfolio.localhost (2 parts)
+  else if (isLocalTest && !reservedSubdomains.includes(parts[0])) {
+    portfolioSlug = parts[0];
+  }
+
+  const isPortfolioSubdomain = portfolioSlug !== null;
 
   console.log(
-    `[middleware] host=${host}, subdomain=${subdomain}, isPortfolio=${isPortfolioSubdomain}, pathname=${pathname}`
+    `[middleware] host=${host}, portfolioSlug=${portfolioSlug}, isPortfolio=${isPortfolioSubdomain}, pathname=${pathname}`
   );
 
   // Skip static assets
@@ -46,18 +64,20 @@ export function middleware(req: NextRequest) {
   }
 
   // Handle portfolio subdomain
-  if (isPortfolioSubdomain) {
-    const url = req.nextUrl.clone();
-    url.pathname = `/p/${subdomain}${pathname === "/" ? "" : pathname}`;
-    console.log(`[middleware] Rewriting to: ${url.pathname}`);
-    const response = NextResponse.rewrite(url);
-    response.headers.set("x-middleware-rewrite", url.pathname);
-    return response;
+  if (isPortfolioSubdomain && portfolioSlug) {
+    const rewriteUrl = req.nextUrl.clone();
+    rewriteUrl.pathname = `/p/${portfolioSlug}`;
+    // Preserve any additional path segments after the root
+    if (pathname !== "/") {
+      rewriteUrl.pathname = `/p/${portfolioSlug}${pathname}`;
+    }
+    console.log(`[middleware] Rewriting to: ${rewriteUrl.pathname}`);
+    return NextResponse.rewrite(rewriteUrl);
   }
 
   const response = NextResponse.next();
   response.headers.set("x-middleware-executed", "true");
-  response.headers.set("x-subdomain", subdomain);
+  response.headers.set("x-portfolio-slug", portfolioSlug || "none");
   response.headers.set("x-is-portfolio", String(isPortfolioSubdomain));
   return response;
 }
