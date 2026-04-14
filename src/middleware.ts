@@ -47,12 +47,14 @@ export function middleware(req: NextRequest) {
 
   // Handle portfolio subdomain
   if (isPortfolioSubdomain) {
-    const url = req.nextUrl.clone();
-    url.pathname = `/p/${subdomain}${pathname === "/" ? "" : pathname}`;
-    console.log(`[middleware] Rewriting to: ${url.pathname}`);
-    const response = NextResponse.rewrite(url);
-    response.headers.set("x-middleware-rewrite", url.pathname);
-    return response;
+    const rewriteUrl = req.nextUrl.clone();
+    rewriteUrl.pathname = `/p/${subdomain}`;
+    // Preserve any additional path segments after the root
+    if (pathname !== "/") {
+      rewriteUrl.pathname = `/p/${subdomain}${pathname}`;
+    }
+    console.log(`[middleware] Rewriting to: ${rewriteUrl.pathname}`);
+    return NextResponse.rewrite(rewriteUrl);
   }
 
   const response = NextResponse.next();
