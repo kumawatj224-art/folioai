@@ -6,7 +6,7 @@ Current scope:
 
 - landing page shell
 - dashboard shell
-- placeholder auth route
+- placeholder auth route 
 - placeholder portfolio API route
 - clear boundaries for later auth, Supabase, AI chat, and deployment work
 
