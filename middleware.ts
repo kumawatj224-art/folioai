@@ -1,51 +1,48 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { isNewAppEnabled } from "@/lib/env/feature-flags";
-
-const bypassPrefixes = ["/_next", "/api", "/favicon.ico", "/robots.txt", "/sitemap.xml", "/index.html"];
+const bypassPrefixes = [
+  "/_next",
+  "/favicon.ico",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/index.html",
+  "/p/",    // Prevent rewrite loop for portfolio routes
+  "/api/",  // Bypass API routes
+];
 
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
   const { pathname } = req.nextUrl;
 
-  // Extract subdomain: jai.getfolioai.in -> jai
-  const subdomain = host.split(".")[0];
+  const hostname = host.split(":")[0]; // remove port
+  const parts = hostname.split(".");
 
-  // Check if this is a portfolio subdomain request
-  const isPortfolioSubdomain = 
-    host.includes("getfolioai.in") &&
-    subdomain !== "www" &&
-    subdomain !== "getfolioai" &&
-    !host.startsWith("getfolioai.in");
+  const subdomain = parts[0];
 
-  console.log(`[middleware] host=${host}, subdomain=${subdomain}, isPortfolio=${isPortfolioSubdomain}, pathname=${pathname}`);
+  const isPortfolioSubdomain =
+    parts.length > 2 && // ensures subdomain exists
+    hostname.endsWith("getfolioai.in") &&
+    subdomain !== "www";
 
-  if (isPortfolioSubdomain) {
-    // Skip API and static assets
-    if (bypassPrefixes.some((prefix) => pathname.startsWith(prefix))) {
-      return NextResponse.next();
-    }
+  console.log(
+    `[middleware] host=${host}, subdomain=${subdomain}, isPortfolio=${isPortfolioSubdomain}, pathname=${pathname}`
+  );
 
-    // Rewrite to portfolio API
-    const url = new URL(`/api/p/${subdomain}`, req.url);
-    console.log(`[middleware] Rewriting to: ${url.pathname}`);
-    return NextResponse.rewrite(url);
-  }
-
-  // Regular app routing for main domain
-  if (isNewAppEnabled()) {
+  // Skip static assets
+  if (bypassPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
   }
 
-  // Demo mode - redirect to static page
-  if (!pathname.includes(".") && !bypassPrefixes.some((p) => pathname.startsWith(p))) {
-    return NextResponse.redirect(new URL("/index.html", req.url));
+  // Handle portfolio subdomain
+  if (isPortfolioSubdomain) {
+    const url = new URL(`/p/${subdomain}`, req.url);
+    return NextResponse.rewrite(url);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
