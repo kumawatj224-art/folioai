@@ -7,7 +7,6 @@ const bypassPrefixes = [
   "/robots.txt",
   "/sitemap.xml",
   "/index.html",
-  "/p/",    // Prevent rewrite loop for portfolio routes
   "/api/",  // Bypass API routes
 ];
 
@@ -65,14 +64,23 @@ export function middleware(req: NextRequest) {
 
   // Handle portfolio subdomain
   if (isPortfolioSubdomain && portfolioSlug) {
-    const rewriteUrl = req.nextUrl.clone();
-    rewriteUrl.pathname = `/p/${portfolioSlug}`;
-    // Preserve any additional path segments after the root
-    if (pathname !== "/") {
-      rewriteUrl.pathname = `/p/${portfolioSlug}${pathname}`;
+    // Prevent rewrite loop - if already on /p/{slug}, skip
+    if (pathname.startsWith(`/p/${portfolioSlug}`)) {
+      return NextResponse.next();
     }
-    console.log(`[middleware] Rewriting to: ${rewriteUrl.pathname}`);
-    return NextResponse.rewrite(rewriteUrl);
+    
+    // Build the new pathname
+    const newPathname = pathname === "/" 
+      ? `/p/${portfolioSlug}` 
+      : `/p/${portfolioSlug}${pathname}`;
+    
+    console.log(`[middleware] Rewriting: pathname=${newPathname}`);
+    
+    // Clone the request URL and modify pathname (preserves cookies, headers, etc.)
+    const url = req.nextUrl.clone();
+    url.pathname = newPathname;
+    
+    return NextResponse.rewrite(url);
   }
 
   const response = NextResponse.next();
