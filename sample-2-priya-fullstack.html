@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Priya Nair — Full-Stack Developer</title>
+<meta name="description" content="Final year ECE student at NIT Trichy. Full-Stack Developer who ships products, not just code."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0ece3;--ink:#0f0d0a;--cream:#faf7f2;--white:#ffffff;
+  --red:#d62828;--red2:#f77f00;--teal:#023e8a;
+  --border:#0f0d0a;--muted:rgba(15,13,10,0.35);
+  --display:'Anton',sans-serif;--body:'Barlow',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--bg);color:var(--ink);overflow-x:hidden;font-size:15px;font-weight:300}
+
+/* LOADER */
+#loader{position:fixed;inset:0;background:var(--ink);z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity 0.7s,visibility 0.7s}
+#loader.out{opacity:0;visibility:hidden}
+.l-text{font-family:var(--display);font-size:clamp(3rem,8vw,6rem);color:var(--bg);letter-spacing:0.05em;animation:lblink 0.8s ease 0.3s both}
+@keyframes lblink{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* NAV */
+nav{height:70px;border-bottom:3px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 0 0 56px;position:sticky;top:0;background:var(--bg);z-index:100}
+.nav-brand{font-family:var(--display);font-size:20px;letter-spacing:0.05em;color:var(--ink)}
+.nav-right{display:flex;height:100%}
+.nav-link{display:flex;align-items:center;padding:0 22px;font-size:12px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;border-left:3px solid var(--border);text-decoration:none;color:var(--ink);transition:all 0.15s;height:100%}
+.nav-link:hover{background:var(--ink);color:var(--bg)}
+.nav-cta{display:flex;align-items:center;padding:0 28px;background:var(--red);color:#fff;font-size:12px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;height:100%;border-left:3px solid var(--border);text-decoration:none;transition:background 0.15s}
+.nav-cta:hover{background:#b01e1e}
+
+/* HERO */
+.hero{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 70px);border-bottom:3px solid var(--border)}
+.hero-left{padding:64px 56px;border-right:3px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.hero-geo-circle{position:absolute;width:320px;height:320px;border-radius:50%;border:48px solid var(--red2);bottom:-100px;right:-80px;opacity:0.15}
+.hero-eyebrow{display:flex;align-items:center;gap:12px;font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
+.he-line{width:36px;height:2px;background:var(--red)}
+.hero-name{font-family:var(--display);font-size:clamp(5.5rem,10vw,11rem);line-height:0.88;letter-spacing:0.01em;text-transform:uppercase;position:relative;z-index:1}
+.hn-outline{-webkit-text-stroke:3px var(--ink);color:transparent;display:block}
+.hn-filled{color:var(--ink);display:block}
+.hn-red{color:var(--red);display:block}
+.hero-bottom{position:relative;z-index:1}
+.hero-bio{font-size:1rem;color:var(--ink);max-width:440px;line-height:1.85;font-weight:300;margin-bottom:36px;padding-left:16px;border-left:3px solid var(--red)}
+.hero-bio strong{font-weight:600}
+.hero-btns{display:flex;gap:0}
+.hbtn-solid{padding:18px 32px;background:var(--ink);color:var(--bg);font-family:var(--body);font-size:12px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;border:3px solid var(--border);text-decoration:none;transition:all 0.15s;display:inline-block}
+.hbtn-solid:hover{background:var(--red);border-color:var(--red)}
+.hbtn-hollow{padding:18px 32px;background:transparent;color:var(--ink);font-family:var(--body);font-size:12px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;border:3px solid var(--border);border-left:none;text-decoration:none;transition:all 0.15s;display:inline-block}
+.hbtn-hollow:hover{background:var(--ink);color:var(--bg)}
+
+.hero-right{display:grid;grid-template-rows:1fr auto}
+.hr-top{padding:56px 48px;display:flex;flex-direction:column;justify-content:center;background:var(--ink);position:relative;overflow:hidden}
+.hrt-geo{position:absolute;width:200px;height:200px;border-radius:50%;background:var(--red);right:-60px;top:-60px;opacity:0.15}
+.hrt-label{font-size:10px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,236,227,0.4);margin-bottom:12px}
+.hrt-college{font-family:var(--display);font-size:2rem;color:var(--bg);letter-spacing:0.05em;text-transform:uppercase;line-height:1.1;margin-bottom:8px}
+.hrt-branch{font-size:13px;color:rgba(240,236,227,0.5);font-weight:300}
+.hrt-year{font-size:12px;color:var(--red2);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;margin-top:10px}
+.hr-stats{display:grid;grid-template-columns:1fr 1fr 1fr}
+.hr-stat{padding:28px 24px;border-top:3px solid var(--border);border-right:3px solid var(--border);display:flex;flex-direction:column;justify-content:space-between}
+.hr-stat:last-child{border-right:none}
+.hs-num{font-family:var(--display);font-size:2.8rem;color:var(--ink);line-height:1}
+.hs-num.red{color:var(--red)}
+.hs-label{font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* TICKER */
+.ticker-section{background:var(--red);border-top:3px solid var(--border);border-bottom:3px solid var(--border);overflow:hidden;padding:14px 0}
+.ticker{display:flex;gap:40px;animation:ticker 22s linear infinite;white-space:nowrap}
+.ti{font-family:var(--display);font-size:16px;letter-spacing:0.08em;text-transform:uppercase;color:#fff}
+.ti-sep{color:rgba(255,255,255,0.3)}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* PROJECTS */
+.projects-section{border-bottom:3px solid var(--border)}
+.sec-bar{background:var(--ink);padding:0 56px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.sec-bar-title{font-family:var(--display);font-size:1.3rem;color:var(--bg);letter-spacing:0.08em;text-transform:uppercase}
+.sec-bar-count{font-size:11px;color:rgba(240,236,227,0.4);letter-spacing:0.1em;text-transform:uppercase;font-weight:500}
+.proj-list{display:flex;flex-direction:column}
+.proj-row{display:grid;grid-template-columns:80px 1fr auto;border-bottom:3px solid var(--border);align-items:stretch;transition:background 0.15s;cursor:pointer;min-height:120px}
+.proj-row:last-child{border-bottom:none}
+.proj-row:hover{background:var(--cream)}
+.pr-num{padding:24px;border-right:3px solid var(--border);display:flex;align-items:flex-start;justify-content:center;font-family:var(--display);font-size:1.8rem;color:rgba(15,13,10,0.12);padding-top:28px}
+.pr-body{padding:28px 40px;border-right:3px solid var(--border)}
+.pr-type{font-size:10px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+.pr-title{font-family:var(--display);font-size:1.5rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--ink);margin-bottom:10px;line-height:1.1}
+.pr-desc{font-size:13px;color:rgba(15,13,10,0.55);line-height:1.75;font-weight:300;margin-bottom:14px;max-width:560px}
+.pr-impact{font-size:12px;color:var(--teal);font-weight:600;letter-spacing:0.03em;margin-bottom:14px}
+.pr-stack{display:flex;gap:0;flex-wrap:wrap}
+.prs{font-size:10px;padding:4px 12px;border:1.5px solid var(--border);font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-right:-1.5px;margin-bottom:-1.5px;color:var(--ink)}
+.pr-arrow{padding:28px 32px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:rgba(15,13,10,0.15);transition:color 0.2s,transform 0.2s}
+.proj-row:hover .pr-arrow{color:var(--red);transform:translate(4px,-4px)}
+
+/* SKILLS */
+.skills-section{border-bottom:3px solid var(--border)}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.skill-col{padding:40px 36px;border-right:3px solid var(--border)}
+.skill-col:last-child{border-right:none}
+.sk-head{font-family:var(--display);font-size:1.2rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:20px;color:var(--ink)}
+.sk-items{display:flex;flex-direction:column;gap:10px}
+.sk-item{font-size:13px;font-weight:300;color:rgba(15,13,10,0.65);display:flex;align-items:center;gap:10px}
+.sk-item::before{content:'';width:4px;height:4px;background:var(--red);flex-shrink:0;border-radius:50%}
+
+/* EXPERIENCE */
+.exp-section{border-bottom:3px solid var(--border)}
+.exp-list{display:flex;flex-direction:column}
+.exp-row{display:grid;grid-template-columns:220px 1fr;border-bottom:3px solid var(--border)}
+.exp-row:last-child{border-bottom:none}
+.er-left{padding:36px 28px;border-right:3px solid var(--border);background:var(--cream)}
+.er-company{font-family:var(--display);font-size:1.5rem;text-transform:uppercase;letter-spacing:0.03em;line-height:1.1;margin-bottom:6px}
+.er-period{font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.er-tag{display:inline-block;padding:3px 12px;background:var(--red);color:#fff;font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase}
+.er-right{padding:36px 48px}
+.er-role{font-family:var(--display);font-size:1.1rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px}
+.er-points{display:flex;flex-direction:column;gap:12px}
+.er-point{display:flex;gap:12px;font-size:13px;color:rgba(15,13,10,0.6);line-height:1.75;font-weight:300}
+.er-point::before{content:'→';color:var(--red);font-weight:600;flex-shrink:0;margin-top:1px}
+.er-point strong{color:var(--ink);font-weight:600}
+
+/* CONTACT */
+.contact-section{display:grid;grid-template-columns:1fr 1fr;border-bottom:3px solid var(--border)}
+.co-left{padding:80px 56px;background:var(--ink);border-right:3px solid var(--border)}
+.col-eyebrow{font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:var(--red2);margin-bottom:20px}
+.col-title{font-family:var(--display);font-size:clamp(3rem,5.5vw,5.5rem);color:var(--bg);text-transform:uppercase;line-height:0.9;margin-bottom:28px}
+.col-title .out{-webkit-text-stroke:2px rgba(240,236,227,0.25);color:transparent;display:block}
+.col-sub{font-size:13px;color:rgba(240,236,227,0.4);line-height:1.8;font-weight:300}
+.co-right{padding:80px 56px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.co-item{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:2px solid var(--border);text-decoration:none;color:var(--ink);transition:all 0.15s;cursor:pointer}
+.co-item:last-child{border-bottom:none}
+.co-item:hover{padding-left:14px;color:var(--red)}
+.ci-label{font-family:var(--display);font-size:1.15rem;text-transform:uppercase;letter-spacing:0.05em}
+.ci-arrow{font-size:1.2rem;transition:transform 0.2s}
+.co-item:hover .ci-arrow{transform:translate(4px,-4px)}
+
+footer{padding:20px 56px;border-top:3px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--ink);flex-wrap:wrap;gap:8px}
+footer div{font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:rgba(240,236,227,0.3)}
+footer span{color:var(--red2)}
+
+@media(max-width:900px){
+  nav{padding:0 0 0 20px}.nav-right{display:none}
+  .hero{grid-template-columns:1fr}.hero-right{display:none}
+  .hero-left{padding:60px 20px 40px}
+  .hero-name{font-size:4.5rem}
+  .ticker-section .ticker{animation-duration:12s}
+  .proj-row{grid-template-columns:1fr}.pr-num{display:none}.pr-arrow{display:none}.pr-body{border-right:none;padding:20px}
+  .skills-grid{grid-template-columns:1fr 1fr}
+  .exp-row{grid-template-columns:1fr}.er-left{border-right:none;border-bottom:3px solid var(--border);padding:24px 20px}.er-right{padding:24px 20px}
+  .contact-section{grid-template-columns:1fr}.co-left{border-right:none;padding:56px 20px}.co-right{padding:40px 20px}
+  footer{padding:16px 20px;flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<div id="loader"><div class="l-text">PRIYA NAIR</div></div>
+
+<nav>
+  <div class="nav-brand">Priya Nair</div>
+  <div class="nav-right">
+    <a href="#projects" class="nav-link">Work</a>
+    <a href="#skills" class="nav-link">Skills</a>
+    <a href="#experience" class="nav-link">Experience</a>
+    <a href="mailto:priya.nair@nit.ac.in" class="nav-cta">Hire me</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-geo-circle"></div>
+    <div>
+      <div class="hero-eyebrow"><div class="he-line"></div>Full-Stack Developer · NIT Trichy</div>
+      <h1 class="hero-name">
+        <span class="hn-outline">PRIYA</span>
+        <span class="hn-filled">NAIR</span>
+      </h1>
+    </div>
+    <div class="hero-bottom">
+      <p class="hero-bio">I ship products, not just code. Final year ECE student who crossed into software because <strong>building things that real people use</strong> is the only thing worth doing. 3 internships. 5 deployed projects. Zero unfinished side projects.</p>
+      <div class="hero-btns">
+        <a href="#projects" class="hbtn-solid">See my work</a>
+        <a href="mailto:priya.nair@nit.ac.in" class="hbtn-hollow">Hire me →</a>
+      </div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hr-top">
+      <div class="hrt-geo"></div>
+      <div class="hrt-label">Education</div>
+      <div class="hrt-college">NIT Trichy</div>
+      <div class="hrt-branch">Electronics & Communication Engineering</div>
+      <div class="hrt-year">Final Year · Graduating May 2025 · CGPA 8.7</div>
+    </div>
+    <div class="hr-stats">
+      <div class="hr-stat"><div class="hs-num red">5</div><div class="hs-label">Products shipped</div></div>
+      <div class="hr-stat"><div class="hs-num">3×</div><div class="hs-label">Internships done</div></div>
+      <div class="hr-stat"><div class="hs-num">8.7</div><div class="hs-label">Academic CGPA</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="ticker-section">
+  <div class="ticker">
+    <span class="ti">React</span><span class="ti-sep">✦</span>
+    <span class="ti">Next.js</span><span class="ti-sep">✦</span>
+    <span class="ti">Node.js</span><span class="ti-sep">✦</span>
+    <span class="ti">TypeScript</span><span class="ti-sep">✦</span>
+    <span class="ti">PostgreSQL</span><span class="ti-sep">✦</span>
+    <span class="ti">AWS</span><span class="ti-sep">✦</span>
+    <span class="ti">Docker</span><span class="ti-sep">✦</span>
+    <span class="ti">Python</span><span class="ti-sep">✦</span>
+    <span class="ti">Prisma</span><span class="ti-sep">✦</span>
+    <span class="ti">Tailwind</span><span class="ti-sep">✦</span>
+    <span class="ti">React</span><span class="ti-sep">✦</span>
+    <span class="ti">Next.js</span><span class="ti-sep">✦</span>
+    <span class="ti">Node.js</span><span class="ti-sep">✦</span>
+    <span class="ti">TypeScript</span><span class="ti-sep">✦</span>
+    <span class="ti">PostgreSQL</span><span class="ti-sep">✦</span>
+    <span class="ti">AWS</span><span class="ti-sep">✦</span>
+    <span class="ti">Docker</span><span class="ti-sep">✦</span>
+  </div>
+</div>
+
+<section class="projects-section" id="projects">
+  <div class="sec-bar"><span class="sec-bar-title">Selected Work</span><span class="sec-bar-count">5 Projects</span></div>
+  <div class="proj-list">
+    <div class="proj-row">
+      <div class="pr-num">01</div>
+      <div class="pr-body">
+        <div class="pr-type">SaaS · Full-Stack</div>
+        <div class="pr-title">PayTrack — Freelancer Invoice Platform</div>
+        <div class="pr-desc">End-to-end invoicing SaaS for Indian freelancers with GST-compliant PDF generation, Razorpay payment links, automatic payment reminders via WhatsApp, and a real-time revenue dashboard.</div>
+        <div class="pr-impact">340 active users · ₹18L+ in invoices processed · 4.8/5 rating on Product Hunt India</div>
+        <div class="pr-stack"><span class="prs">Next.js</span><span class="prs">Prisma</span><span class="prs">PostgreSQL</span><span class="prs">Razorpay</span><span class="prs">AWS SES</span></div>
+      </div>
+      <div class="pr-arrow">↗</div>
+    </div>
+    <div class="proj-row">
+      <div class="pr-num">02</div>
+      <div class="pr-body">
+        <div class="pr-type">Mobile App · React Native</div>
+        <div class="pr-title">CampusEats — College Food Ordering App</div>
+        <div class="pr-desc">Food ordering app for NIT Trichy campus — real-time order tracking, canteen dashboard for vendors, and UPI payment integration. Handles peak lunch rush of 800+ simultaneous orders.</div>
+        <div class="pr-impact">1,200 daily active students · 800+ concurrent orders handled · zero downtime in 6 months</div>
+        <div class="pr-stack"><span class="prs">React Native</span><span class="prs">Node.js</span><span class="prs">Redis</span><span class="prs">Socket.io</span><span class="prs">MongoDB</span></div>
+      </div>
+      <div class="pr-arrow">↗</div>
+    </div>
+    <div class="proj-row">
+      <div class="pr-num">03</div>
+      <div class="pr-body">
+        <div class="pr-type">Open Source · Developer Tool</div>
+        <div class="pr-title">FormFlow — React Form Builder Library</div>
+        <div class="pr-desc">Drag-and-drop form builder as a React component library with TypeScript support, validation, conditional logic, and multi-step forms. Published on npm with full documentation site.</div>
+        <div class="pr-impact">2,800+ npm weekly downloads · 180 GitHub stars · 12 external contributors</div>
+        <div class="pr-stack"><span class="prs">React</span><span class="prs">TypeScript</span><span class="prs">Rollup</span><span class="prs">Storybook</span><span class="prs">Jest</span></div>
+      </div>
+      <div class="pr-arrow">↗</div>
+    </div>
+  </div>
+</section>
+
+<section class="skills-section" id="skills">
+  <div class="sec-bar"><span class="sec-bar-title">Technical Skills</span></div>
+  <div class="skills-grid">
+    <div class="skill-col"><div class="sk-head">Frontend</div><div class="sk-items"><div class="sk-item">React · Next.js</div><div class="sk-item">TypeScript</div><div class="sk-item">Tailwind CSS</div><div class="sk-item">React Native</div><div class="sk-item">Framer Motion</div></div></div>
+    <div class="skill-col"><div class="sk-head">Backend</div><div class="sk-items"><div class="sk-item">Node.js · Express</div><div class="sk-item">Python · FastAPI</div><div class="sk-item">PostgreSQL</div><div class="sk-item">Redis · MongoDB</div><div class="sk-item">Prisma ORM</div></div></div>
+    <div class="skill-col"><div class="sk-head">DevOps</div><div class="sk-items"><div class="sk-item">AWS (EC2, S3, SES)</div><div class="sk-item">Docker</div><div class="sk-item">GitHub Actions</div><div class="sk-item">Vercel · Railway</div><div class="sk-item">Nginx</div></div></div>
+    <div class="skill-col"><div class="sk-head">Languages</div><div class="sk-items"><div class="sk-item">JavaScript · TypeScript</div><div class="sk-item">Python</div><div class="sk-item">C++ · Java</div><div class="sk-item">SQL</div><div class="sk-item">Bash scripting</div></div></div>
+  </div>
+</section>
+
+<section class="exp-section" id="experience">
+  <div class="sec-bar"><span class="sec-bar-title">Experience</span></div>
+  <div class="exp-list">
+    <div class="exp-row">
+      <div class="er-left">
+        <div class="er-company">Razorpay</div>
+        <div class="er-period">Jun – Aug 2024</div>
+        <div class="er-tag">SWE Intern</div>
+      </div>
+      <div class="er-right">
+        <div class="er-role">Frontend Engineering Intern</div>
+        <div class="er-points">
+          <div class="er-point">Built <strong>Smart Retry UI</strong> for failed payment flows — reduced payment failure drop-off by <strong>23%</strong>, directly impacting millions of transactions daily.</div>
+          <div class="er-point">Migrated 4 legacy Angular components to React — improved page load time by <strong>1.4 seconds</strong> and eliminated 800+ lines of dead code.</div>
+          <div class="er-point">Received <strong>pre-placement offer (PPO)</strong> at the end of internship.</div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-row">
+      <div class="er-left">
+        <div class="er-company">Zomato</div>
+        <div class="er-period">May – Jul 2023</div>
+        <div class="er-tag">SWE Intern</div>
+      </div>
+      <div class="er-right">
+        <div class="er-role">Backend Engineering Intern</div>
+        <div class="er-points">
+          <div class="er-point">Designed and implemented <strong>restaurant search ranking algorithm</strong> that factors in real-time delivery time, ratings decay, and personalization signals — improved click-through rate by <strong>18%</strong>.</div>
+          <div class="er-point">Built <strong>internal dashboard</strong> for the supply team to monitor delivery partner availability across 12 cities in real time using WebSockets and Redis pub/sub.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="contact-section" id="contact">
+  <div class="co-left">
+    <div class="col-eyebrow">Get in touch</div>
+    <h2 class="col-title">LET'S<br/><span class="out">BUILD</span><br/>THINGS.</h2>
+    <p class="col-sub">Open to SWE, Product Engineer, and Frontend roles. PPO from Razorpay in hand — also open to exciting startups. Available June 2025.</p>
+  </div>
+  <div class="co-right">
+    <a href="mailto:priya.nair@nit.ac.in" class="co-item"><span class="ci-label">Email</span><span class="ci-arrow">↗</span></a>
+    <a href="https://linkedin.com/in/priya-nair-nit" class="co-item"><span class="ci-label">LinkedIn</span><span class="ci-arrow">↗</span></a>
+    <a href="https://github.com/priya-nair" class="co-item"><span class="ci-label">GitHub</span><span class="ci-arrow">↗</span></a>
+    <a href="#" class="co-item"><span class="ci-label">Resume</span><span class="ci-arrow">↗</span></a>
+  </div>
+</section>
+
+<footer>
+  <div>© 2025 <span>Priya Nair</span> · NIT Trichy</div>
+  <div>Built with <span>FolioAI</span></div>
+</footer>
+
+<script>setTimeout(()=>document.getElementById('loader').classList.add('out'),1200);</script>
+</body>
+</html>
