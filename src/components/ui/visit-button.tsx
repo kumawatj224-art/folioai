@@ -1,16 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 type VisitButtonProps = {
   liveUrl: string;
 };
 
 export function VisitButton({ liveUrl }: VisitButtonProps) {
+  const [isLocalhost, setIsLocalhost] = useState(false);
+  
+  useEffect(() => {
+    setIsLocalhost(window.location.host.includes("localhost"));
+  }, []);
+  
   // Extract subdomain from production URL
   const slugMatch = liveUrl.match(/https?:\/\/([^.]+)\.getfolioai\.in/);
   const slug = slugMatch ? slugMatch[1] : null;
   
   // For localhost, use local API route
-  const isLocalhost = typeof window !== "undefined" && window.location.host.includes("localhost");
   const href = isLocalhost && slug 
     ? `/api/p/${slug}`
     : liveUrl;

@@ -19,7 +19,6 @@ export type PlanLimits = {
   regenerationsPerDay: number;  // 999 = unlimited
   
   // Features
-  allowedTemplates: string[] | 'all';
   hasSubdomain: boolean;
   maxCustomDomains: number;
   maxPortfolios: number;
@@ -117,7 +116,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     plan: 'free',
     generationsPerMonth: 3,  // Actually lifetime total
     regenerationsPerDay: 2,
-    allowedTemplates: ['minimal-dark', 'minimal-warm', 'terminal-dark'],
     hasSubdomain: false,
     maxCustomDomains: 0,
     maxPortfolios: 1,
@@ -135,7 +133,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     plan: 'starter',
     generationsPerMonth: 5,
     regenerationsPerDay: 10,
-    allowedTemplates: 'all',
     hasSubdomain: true,
     maxCustomDomains: 0,
     maxPortfolios: 1,
@@ -153,7 +150,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     plan: 'pro',
     generationsPerMonth: 15,
     regenerationsPerDay: 999,  // Unlimited
-    allowedTemplates: 'all',
     hasSubdomain: true,
     maxCustomDomains: 1,  // BYOD - user brings their own domain
     maxPortfolios: 3,
@@ -171,7 +167,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     plan: 'lifetime',
     generationsPerMonth: 10,  // Capped for sustainability (120/year max)
     regenerationsPerDay: 999,
-    allowedTemplates: 'all',
     hasSubdomain: true,
     maxCustomDomains: 1,  // BYOD - user brings their own domain
     maxPortfolios: 3,
@@ -203,12 +198,6 @@ export function getPlanLabel(plan: PlanType): string {
 
 export function getPlanLimits(plan: PlanType): PlanLimits {
   return PLAN_LIMITS[plan];
-}
-
-export function isTemplateAllowed(plan: PlanType, templateSlug: string): boolean {
-  const limits = PLAN_LIMITS[plan];
-  if (limits.allowedTemplates === 'all') return true;
-  return limits.allowedTemplates.includes(templateSlug);
 }
 
 export function canCreatePortfolio(subscription: UserSubscription): { allowed: boolean; reason?: string } {

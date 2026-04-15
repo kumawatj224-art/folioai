@@ -20,6 +20,7 @@
 
 import { AzureOpenAI } from "openai";
 import type { ChatMessage, StudentInfo, PortfolioTemplate } from "@/domain/entities/chat";
+import { getRandomReferenceTemplate, TEMPLATE_STYLES } from "@/data/reference-templates";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // CONFIGURATION - Separate endpoints for chat & generation
@@ -67,8 +68,11 @@ const generationClient = new AzureOpenAI({
 // CONVERSATION SYSTEM PROMPT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const CONVERSATION_SYSTEM_PROMPT = `You are FolioAI, an expert portfolio website builder. 
-Your job is to collect information and generate stunning portfolio websites.
+const CONVERSATION_SYSTEM_PROMPT = `You are FolioAI, an expert portfolio website builder for Indian 
+engineering students. You have two modes:
+
+MODE 1 — CONVERSATION (collecting information)
+MODE 2 — GENERATION (producing the final HTML portfolio)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL RULES — NEVER BREAK THESE
@@ -91,8 +95,65 @@ CRITICAL RULES — NEVER BREAK THESE
 
 4. BE CONCISE
    - Max 2-3 sentences per response
-   - Ask only ONE question at a time
-   - Skip encouragement speeches — be direct
+   - Ask 2-3 questions together, never one at a time
+   - Be warm, brief, encouraging
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONVERSATION FLOW (only if starting fresh)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Collect information in this exact order:
+
+STEP 1 — Identity
+"What's your full name, college, branch, and year?"
+
+STEP 2 — Role + Bio  
+"What kind of engineer are you? (full-stack, ML, Android, 
+DevOps, etc.) And write one sentence about what you're 
+building or learning right now — in your own words."
+
+STEP 3 — Skills
+"List your: programming languages / frameworks / tools 
+(just list them, no need to explain)"
+
+STEP 4 — Projects (repeat for each)
+For each project get: name, what it does in 1-2 sentences, 
+tech stack, any impact/numbers (users, accuracy, speed, etc.)
+Ask: "Any numbers you can share? Users, accuracy %, speed 
+improvement, etc. — even rough ones make it look much better."
+
+STEP 5 — Experience
+"Any internships or jobs? For each: company, role, duration, 
+and one sentence about what you built or improved."
+If none: "No worries — we'll focus on your projects."
+
+STEP 6 — Stats + Links
+"Optional but makes your portfolio stronger:
+- CGPA
+- GitHub username (I'll pull your stats)  
+- LinkedIn URL
+- Your email for the contact section"
+
+STEP 7 — Done!
+**DO NOT ask user to pick a template.** We auto-select a stunning design for them.
+
+After collecting all info, say:
+"Perfect! I've got everything. Click **Generate** and I'll create a stunning portfolio for you!"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONFIRMATION STEP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Before generating, summarise everything:
+"Here's what I have. Does anything need changing?
+Name: ...
+College/Branch/Year: ...  
+Role: ...
+Projects: ...
+Experience: ...
+[Click Generate when ready / What needs changing?]"
+
+**Do NOT mention template.** We pick automatically.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EDIT MODE / REGENERATION (VERY IMPORTANT)
@@ -103,63 +164,26 @@ When user is EDITING/REGENERATING an existing portfolio:
 - DON'T ask to re-enter name, skills, experience, projects
 - Just ask: "What would you like to change?"
 
+**TEMPLATES ARE AUTO-SELECTED — DO NOT SHOW OPTIONS**
+
+We automatically pick a beautiful design. Do NOT ask users to choose templates.
+
 Common edit requests (handle directly):
-- "Change design" → Show template options
-- "Make it creative" → Suggest creative templates
-- "Light colors" → Suggest light/bright templates
+- "Change design" → Say "Got it! Click **Regenerate** and I'll create a fresh new design for you!"
+- "Make it creative" → Say "Sure! Click **Regenerate** for a creative new look!"
 - "Add X" → Ask for details about X only
 - "Remove projects" → Say "Got it, I'll skip the projects section"
 - "Update bio" → Ask only for new bio
 
 Example responses for edit mode:
 - User: "Make it more creative" 
-  → "I'll use your existing info. Pick a template: 🎮 Game HUD, 🧱 Bento Grid, 📱 iOS App, or 🎵 Spotify?"
+  → "Got it! Click **Regenerate** and I'll give you a fresh creative design!"
 
-- User: "Change to bento grid"
-  → "Got it! Click **Re-Generate** to see your Bento Grid portfolio."
+- User: "Different template"
+  → "Sure! Click **Regenerate** for a completely new design!"
 
 - User: "Add a project"
   → "What's the project name and description?"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WHAT TO DO BASED ON CURRENT DATA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-IF studentInfo already has name + skills/experience/education:
-  → Data is ALREADY collected!
-  → Just ask: "Want to change anything or pick a different template?"
-  → Don't re-ask for basic info
-
-IF user says "change design" or "update template":
-  → Show template options immediately
-  → Don't ask for more info
-
-TEMPLATE OPTIONS (show these for creative requests):
-  🎮 Game HUD — XP bars, achievements, gaming UI
-  📱 iOS App — iPhone home screen style
-  🌌 Space Galaxy — planets, constellations  
-  📼 Retro VHS — 80s neon, scanlines
-  🎵 Spotify — music player interface
-  📊 Dashboard — analytics, charts
-  📰 Newspaper — editorial, headlines
-  🧱 Bento Grid — modern Apple card layout
-  💻 Terminal — hacker aesthetic
-
-LIGHT/BRIGHT TEMPLATES:
-  📰 Newspaper — cream paper, editorial red
-  🧱 Bento Grid — can be light themed
-  📱 iOS App — light mode style
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONVERSATION FLOW (only if starting fresh)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Basic Info: name, college, branch, year
-2. Skills: languages, frameworks, tools
-3. Projects: ask ONCE — if "no", move on
-4. Experience: ask ONCE — if "no", move on  
-5. Template: show options, let them pick
-6. Generate: when ready, say "Click Generate!"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RESPONSE GUIDELINES
@@ -168,552 +192,235 @@ RESPONSE GUIDELINES
 - Keep responses under 50 words
 - When user declines something, just say "Got it!" and move on
 - Don't repeat what user already said
-- If data exists, say: "Using your existing info. Click **Re-Generate** when ready!"
+- If data exists, say: "Using your existing info. Click **Regenerate** when ready!"
 - For fresh start: "Ready! Click **Generate** when you're set."
 
 Current information collected:
 {{STUDENT_INFO}}`;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// HTML GENERATION SYSTEM PROMPT
+// DYNAMIC HTML GENERATION PROMPT BUILDER
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const HTML_GENERATION_PROMPT = `Generate a complete, production-ready portfolio website as a single HTML file.
+/**
+ * Analyzes student data to determine which sections to include
+ */
+function analyzeStudentData(studentInfo: Partial<StudentInfo>) {
+  const hasExperience = (studentInfo.internships?.length ?? 0) > 0;
+  const hasProjects = (studentInfo.projects?.length ?? 0) > 0;
+  const hasAchievements = (studentInfo.achievements?.length ?? 0) > 0;
+  const hasSkills = (studentInfo.skills?.length ?? 0) > 0;
+  const hasCodingProfiles = Boolean(studentInfo.leetcodeProfile || studentInfo.githubUsername);
+  const hasEducation = Boolean(studentInfo.college || studentInfo.branch || studentInfo.graduationYear);
+  
+  const projectCount = studentInfo.projects?.length ?? 0;
+  const experienceCount = studentInfo.internships?.length ?? 0;
+  
+  // Determine user type
+  const isExperienced = hasExperience && experienceCount >= 1;
+  const isStudent = !isExperienced && hasEducation;
+  
+  return {
+    hasExperience,
+    hasProjects,
+    hasAchievements,
+    hasSkills,
+    hasCodingProfiles,
+    hasEducation,
+    projectCount,
+    experienceCount,
+    isExperienced,
+    isStudent,
+  };
+}
 
-**Student Information:**
-{{STUDENT_INFO}}
+/**
+ * Builds dynamic sections instructions based on user data
+ */
+function buildDynamicSectionsPrompt(studentInfo: Partial<StudentInfo>, analysis: ReturnType<typeof analyzeStudentData>): string {
+  const sections: string[] = [];
+  
+  // Always include these
+  sections.push(`
+**REQUIRED SECTIONS FOR THIS PORTFOLIO:**
 
-**Template Style:** {{TEMPLATE}}
+1. ✅ LOADING SCREEN — Animated name reveal
+2. ✅ NAVIGATION — Fixed nav with links to: ${[
+    analysis.hasProjects ? '#projects' : null,
+    '#skills',
+    analysis.hasExperience ? '#experience' : null,
+    analysis.isStudent ? '#education' : null,
+    analysis.hasAchievements ? '#achievements' : null,
+    '#contact'
+  ].filter(Boolean).join(', ')}
+3. ✅ HERO SECTION — ${analysis.isExperienced 
+    ? 'Company cards sidebar with metrics' 
+    : 'Education focus with stats (projects built, CGPA, etc.)'}
+4. ✅ SKILLS TICKER — Infinite horizontal scroll marquee`);
+
+  // Projects section
+  if (analysis.hasProjects) {
+    sections.push(`5. ✅ PROJECTS SECTION (id="projects") — ${analysis.projectCount} project(s) to display
+   - Each project MUST include: title, description, tech stack
+   - Show impact metrics prominently
+   - ${analysis.isStudent ? 'Make this the MAIN section since student has limited experience' : 'Standard project cards'}`);
+  } else {
+    sections.push(`5. ⚠️ NO PROJECTS — Skip projects section (user didn't provide any)`);
+  }
+
+  // Experience section
+  if (analysis.hasExperience) {
+    sections.push(`6. ✅ EXPERIENCE SECTION (id="experience") — ${analysis.experienceCount} position(s) to display
+   - 2-column layout: company/role/tech on left, bullet achievements on right
+   - Use <strong> tags for metrics and key technologies
+   - Colored accent dots for bullets`);
+  } else {
+    sections.push(`6. ⚠️ NO EXPERIENCE — Skip experience section, DO NOT include "Experience" in nav
+   Instead, add EDUCATION section (id="education") with:
+   - College name prominently displayed
+   - Branch/degree
+   - Graduation year
+   - CGPA if provided`);
+  }
+
+  // Skills grid
+  sections.push(`7. ✅ SKILLS GRID (id="skills") — Group by: Languages / Frameworks / Tools / Domains`);
+
+  // Achievements
+  if (analysis.hasAchievements || analysis.hasCodingProfiles) {
+    sections.push(`8. ✅ ACHIEVEMENTS SECTION (id="achievements")
+   ${analysis.hasAchievements ? `- Awards/certifications: ${studentInfo.achievements?.slice(0, 3).join(', ')}` : ''}
+   ${analysis.hasCodingProfiles ? `- Coding profiles: ${studentInfo.leetcodeProfile ? 'LeetCode' : ''} ${studentInfo.githubUsername ? 'GitHub' : ''}` : ''}`);
+  } else {
+    sections.push(`8. ⚠️ NO ACHIEVEMENTS — Skip achievements section`);
+  }
+
+  // Contact (always)
+  sections.push(`9. ✅ CONTACT SECTION (id="contact") — Warm, specific copy with email/social links
+10. ✅ FOOTER — Include "Built with FolioAI" credit`);
+
+  return sections.join('\n');
+}
+
+/**
+ * Builds the complete generation prompt dynamically based on student data
+ * Randomly selects one of 3 reference templates for variety
+ */
+function buildGenerationPrompt(studentInfo: Partial<StudentInfo>, template: PortfolioTemplate): string {
+  const analysis = analyzeStudentData(studentInfo);
+  
+  // Randomly select one of the 3 reference templates
+  const { name: selectedTemplate, reference: referenceTemplate } = getRandomReferenceTemplate();
+  const templateStyle = TEMPLATE_STYLES[selectedTemplate] || TEMPLATE_STYLES['enterprise-dark'];
+  
+  return `Generate a complete, production-ready portfolio website as a single HTML file.
+
+**USER DATA:**
+\`\`\`json
+${JSON.stringify(studentInfo, null, 2)}
+\`\`\`
+
+**PROFILE TYPE:** ${analysis.isExperienced ? '👔 EXPERIENCED PROFESSIONAL' : '🎓 STUDENT/FRESHER'}
+**SELECTED TEMPLATE:** ${selectedTemplate} (randomly chosen from 3 references)
+**STYLE:** ${templateStyle.description}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DYNAMIC CONTENT HANDLING (CRITICAL FOR STUDENTS)
+TEMPLATE SPECIFICATIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Analyze the student information and DYNAMICALLY include/exclude sections:
-
-IF user has work experience (internships array is NOT empty):
-  → Include "Experience" section with company details
-  → Show experience in nav menu
-  
-IF user has NO work experience (internships array is empty or missing):
-  → SKIP the Experience section entirely
-  → DO NOT include "Experience" link in nav
-  → Instead, make PROJECTS and EDUCATION more prominent
-  → Add an "Education" section with college, branch, CGPA
-  → The hero can show "Aspiring [Role]" or "[Year] Year [Branch] Student"
-
-IF user has projects (projects array has items):
-  → Include "Projects" section — make it prominent for students without experience
-  → For students, projects should come BEFORE experience in layout
-  
-IF user has achievements (achievements array has items):
-  → Include "Achievements" section
-  → Include hackathons, certifications, coding profiles, awards
-  
-IF user has coding profiles (LeetCode, CodeChef, etc.):
-  → Add a "Coding Profiles" or "Competitive Programming" card
-  → Show ratings/problem counts as stats
-
-SECTION ORDER FOR STUDENTS (no experience):
-  1. Hero (with education info prominent)
-  2. Skills ticker
-  3. Projects (THE main section)
-  4. Skills grid
-  5. Education section
-  6. Achievements (if any)
-  7. Contact
-
-SECTION ORDER FOR EXPERIENCED:
-  1. Hero (with company cards)
-  2. Skills ticker
-  3. Experience
-  4. Skills grid
-  5. Projects (if any)
-  6. Achievements (if any)
-  7. Contact
+**Fonts:** ${templateStyle.fonts}
+**Colors:** ${templateStyle.colors}
+**Hero Style:** ${templateStyle.heroStyle}
+**Project Style:** ${templateStyle.projectStyle}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MANDATORY HTML REQUIREMENTS
+REFERENCE TEMPLATE STRUCTURE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-- Single HTML file with ALL CSS embedded in <style> tag
-- ALL JavaScript embedded in <script> tag  
-- NO external dependencies (no CDN links for CSS frameworks)
-- Google Fonts links ARE allowed (they load fast)
-- Must be fully responsive — works on mobile AND desktop
-- Must scroll smoothly with working anchor navigation
-- Include a loading animation (fade out after 0.8s)
-- Add intersection observer for fade-in animations on scroll
-
-NAVIGATION & ANCHORS (DYNAMIC):
-- Fixed navigation bar at top with backdrop blur
-- Navigation should ONLY include links to sections that EXIST:
-  * href="#projects" → ALWAYS include if user has projects
-  * href="#skills" → ALWAYS include
-  * href="#experience" → ONLY if user has internships/jobs
-  * href="#education" → Include for students without experience
-  * href="#achievements" → ONLY if user has achievements
-  * href="#contact" → ALWAYS include
-- Each included section MUST have a matching id attribute
-- Add smooth scroll CSS: html { scroll-behavior: smooth }
-- Include "Hire me" or "Contact" CTA button in nav that links to #contact
-
-DYNAMIC SECTIONS (include based on data):
-1. Loading screen with name animation — ALWAYS
-2. Fixed navigation with links to EXISTING sections — ALWAYS
-3. Hero section — ALWAYS (adapt content based on student vs professional)
-4. Skills ticker/marquee — ALWAYS (infinite horizontal scroll)
-5. Projects section (id="projects") — if user has projects (PROMINENT for students)
-6. Experience section (id="experience") — ONLY if user has internships/jobs
-7. Education section (id="education") — for students, include college/branch/CGPA
-8. Skills grid (id="skills") — ALWAYS
-9. Achievements section (id="achievements") — if user has awards/certifications/coding profiles
-10. Personal/About section with quote — ALWAYS
-11. Contact section (id="contact") — ALWAYS
-12. Footer with "Built with FolioAI" — ALWAYS
+Use this proven HTML/CSS structure as reference:
+${referenceTemplate}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STUDENT-SPECIFIC HERO ADAPTATIONS
+SECTIONS TO GENERATE (DATA-DRIVEN)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-FOR STUDENTS WITHOUT EXPERIENCE:
-  Hero Left Side:
-    - Eyebrow: "[Branch] · [Year] Year · [College]"
-    - Name: Large, styled name
-    - Tagline: "Aspiring [Role] | [Passion/Focus Area]"
-    - Description: What they're learning, their goals
-    - CTA: "View Projects" + "Contact Me"
-  
-  Hero Right Side (instead of company cards):
-    - Education card with college, branch, CGPA
-    - Skills summary card
-    - Stats: Projects built, problems solved (LeetCode), etc.
-    - OR: Featured project preview
-
-FOR EXPERIENCED PROFESSIONALS:
-  Hero Right Side:
-    - Company cards with colored dots
-    - Stats grid (years exp, metrics, impact)
+${buildDynamicSectionsPrompt(studentInfo, analysis)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DESIGN RULES — NEVER DO THESE (CRITICAL)
+${analysis.isExperienced ? 'EXPERIENCED PROFESSIONAL GUIDELINES' : 'STUDENT/FRESHER GUIDELINES'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-❌ NEVER create a "standard corporate" portfolio with sections stacked vertically
-❌ NEVER use the same layout everyone uses (hero → experience → skills → contact)
-❌ NEVER use blue (#3b82f6) as primary accent — it's overused
-❌ NEVER use JetBrains Mono + Inter combo — too common
-❌ NEVER create "company cards" with colored dots — everyone does this
-❌ NEVER use a simple fixed navbar with text links
-❌ NEVER use basic card grids with equal spacing
-❌ NEVER add placeholder "Lorem ipsum" text
-❌ NEVER invent fake projects or experience the user didn't mention
-❌ NEVER use generic stock phrases like "passionate developer" or "tech enthusiast"
-❌ NEVER use basic bullet points (•) — be creative
-❌ NEVER make all sections look the same
-❌ NEVER create boring, flat designs
-❌ NEVER ignore the chosen creative concept
+${analysis.isExperienced ? `
+**HERO LAYOUT:**
+- Left: Name (large serif), current role, company, brief intro
+- Right: Company cards with colored dots (current company highlighted)
+- Stats: Years of experience, impact metrics from resume
+
+**SECTION ORDER:**
+1. Hero with company cards
+2. Skills ticker
+3. Experience (PROMINENT)
+4. Projects
+5. Skills grid
+6. Achievements
+7. Contact
+
+**EXPERIENCE SECTION FORMAT:**
+For each position create a 2-column card:
+- LEFT: Company name, role, period, tech chips
+- RIGHT: 3-5 bullet achievements with <strong> emphasis
+` : `
+**HERO LAYOUT:**
+- Left: Name, "Aspiring [Role]" or "[Year] Year [Branch] Student"
+- Right: Education card OR featured project preview OR stats
+- Stats: Projects built, CGPA, problems solved, etc.
+
+**SECTION ORDER:**
+1. Hero with education focus
+2. Skills ticker  
+3. Projects (MAKE THIS PROMINENT - it's the main content)
+4. Skills grid
+5. Education section
+6. Achievements (if any)
+7. Contact
+
+**EDUCATION SECTION FORMAT:**
+- College name (large, prominent)
+- Branch/degree and graduation year
+- CGPA if provided
+- Any relevant coursework or specializations
+`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DESIGN RULES — ALWAYS DO THESE (CREATIVE FOCUS)
+TECHNICAL REQUIREMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ ALWAYS pick ONE creative concept and commit fully (see CREATIVE CONCEPTS below)
-✅ ALWAYS use an unusual layout — NOT the standard vertical sections
-✅ ALWAYS add at least 3 CSS animations (hover, scroll, entrance, continuous)
-✅ ALWAYS include ONE unique interactive element (not just hover effects)
-✅ ALWAYS use a distinctive color palette — NOT blue, NOT purple gradients
-✅ ALWAYS vary section designs — no two sections should look similar
-✅ ALWAYS add depth: layered elements, overlapping cards, z-index play
-✅ ALWAYS include personality — inside jokes, fun copy, unexpected elements
-✅ ALWAYS use creative typography: variable fonts, animated text, gradient text
-✅ ALWAYS add "easter eggs" or delightful surprises for visitors
-✅ ALWAYS make the loading screen unique (not just fading name)
-✅ ALWAYS include one "wow" element that makes people screenshot
-✅ Use the student's actual words/description for bio
-✅ Add "Built with FolioAI" in footer
-✅ Extract ALL quantified achievements and display creatively
+- Single HTML file with ALL CSS in <style> tag
+- ALL JavaScript in <script> tag before </body>
+- Google Fonts links allowed and REQUIRED for specified fonts
+- NO external CSS frameworks (Tailwind, Bootstrap)
+- Fully responsive with @media breakpoints
+- Include loading animation (fade out after 0.8s)
+- Add intersection observer for scroll animations
+- html { scroll-behavior: smooth }
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CREATIVE CONCEPTS — PICK ONE AND GO ALL-IN
+CRITICAL RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-DO NOT create a generic portfolio. Pick ONE concept from below:
+✅ DO:
+- Use the EXACT data provided (name, projects, skills, experience)
+- Follow the template's font and color specifications exactly
+- Include section markers: <!-- SECTION: NAME --> and <!-- END: NAME -->
+- Make the bio personal using user's own words
+- Display ALL quantified achievements prominently
+- Add "Built with FolioAI" in footer
 
-🎮 GAME HUD CONCEPT:
-  - Health bar = skill proficiency
-  - XP meter = years of experience
-  - Achievement unlocks with popups
-  - Player stats card with level
-  - Pixel art elements, 8-bit sounds on hover
-  - "Press START" on load screen
-
-📱 iOS APP CONCEPT:
-  - Looks like an iPhone home screen
-  - Projects = app icons
-  - Tap to open (modal like app opening)
-  - Dynamic Island for status
-  - Control Center for contact info
-  - Rounded corners, blur effects throughout
-
-🌌 SPACE/GALAXY CONCEPT:
-  - Dark space background with stars (CSS animated)
-  - Planets = skill categories (orbit animation)
-  - Constellations connect projects
-  - Shooting stars on scroll
-  - "Mission Control" navigation
-  - Floating astronaut avatar
-
-📺 RETRO TV / VHS CONCEPT:
-  - CRT screen effect with scanlines
-  - VHS tracking distortion on hover
-  - Channel switching for sections
-  - Static noise transitions
-  - Neon 80s color palette (#ff00ff, #00ffff)
-  - "PLAY/PAUSE" buttons
-
-🎵 SPOTIFY / MUSIC PLAYER CONCEPT:
-  - Dark UI like Spotify
-  - Experience = albums/tracklist
-  - Skills = genre tags
-  - Projects = playlist cards
-  - Progress bar navigation
-  - "Now Playing" hero section
-
-📊 DASHBOARD / ANALYTICS CONCEPT:
-  - Glassmorphism cards everywhere
-  - Real-time looking metrics (animate numbers)
-  - Charts for skills (bar/radar/donut)
-  - Sidebar navigation like admin panel
-  - Status indicators (online • active)
-  - Grid of varying card sizes
-
-🎪 CIRCUS / CARNIVAL CONCEPT:
-  - Playful, colorful, bold
-  - Ticket-style project cards
-  - Carousel animations
-  - Oversized typography
-  - Confetti on interactions
-  - "Roll up, roll up!" energy
-
-📰 NEWSPAPER FRONT PAGE CONCEPT:
-  - Actual newspaper layout with columns
-  - Headline typography for name
-  - Bylines for roles/dates
-  - Pull quotes with giant quotation marks
-  - "Breaking News" ticker for skills
-  - Sepia/paper texture background
-
-Pick the concept that fits the user's personality and industry. Execute it FULLY — don't half-commit.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TEMPLATE SPECS — use exact fonts and structure
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-TEMPLATE: macos-desktop (CREATIVE — HIGHLY RECOMMENDED FOR STUDENTS)
-  Fonts: -apple-system, SF Pro Display
-  Colors: 
-    --bg: #1e1e1e (dark surface)
-    --surface: #2d2d2d (cards)
-    --accent: #0a84ff (macOS blue)
-    --red: #ff453a, --yellow: #ffd60a, --green: #32d74b (traffic lights)
-  
-  KEY EXPERIENCE: Interactive OS-style desktop environment
-  - Menu bar at top (Apple logo, nav items, clock, battery)
-  - Desktop icons on left side = project folders (clickable)
-  - Hero section centered with curved background shapes
-  - Dock at bottom with app icons (Projects, Resume, Contact, GitHub, LinkedIn)
-  - Windows that open on click (modal-style with close/minimize/maximize buttons)
-  - Each project = a folder icon that opens a detail window
-  
-  Structure:
-  1. Menu bar (fixed top, blur backdrop)
-  2. Desktop with folder icons (left side)
-  3. Hero center: "Hey, I'm [Name]! Welcome to my portfolio"
-  4. Dock (fixed bottom, icons with hover zoom)
-  5. Window modals for Projects, Skills, Contact
-  
-  Interactions (CSS + minimal JS):
-  - Folder hover: background highlight
-  - Dock items: translateY(-10px) + scale(1.15) on hover
-  - Windows: fade-in animation, close button works
-  - Clock: updates with actual time
-
-TEMPLATE: bento-grid (CREATIVE — MODERN LAYOUT)
-  Fonts: Plus Jakarta Sans
-  Colors: 
-    --bg: #0a0a0a
-    --card: #141414
-    --accent: #f97316 (orange)
-  
-  KEY EXPERIENCE: Card-based grid like Apple's website
-  - CSS Grid with varying card sizes (span 2 cols, span 2 rows)
-  - Hero card (large, spans 2x2)
-  - Profile card with avatar and status
-  - Stats card (4 numbers: projects, skills, year, CGPA)
-  - Skills card (icon rows)
-  - Project cards (numbered, with tech tags)
-  - Contact card (CTA buttons)
-  
-  Structure:
-  1. Full-bleed bento grid
-  2. Cards animate on hover (lift + shadow)
-  3. Orange accent line appears on project cards on hover
-  4. No traditional sections — all in grid
-
-TEMPLATE: editorial (CREATIVE — NEWSPAPER STYLE)
-  Fonts: Playfair Display (serif headlines) + Source Sans 3 (body)
-  Colors: 
-    --bg: #faf9f7 (cream paper)
-    --text: #1a1a1a (ink)
-    --accent: #c41230 (editorial red)
-  
-  KEY EXPERIENCE: Newspaper/magazine layout
-  - Masthead with name (like newspaper title)
-  - 2-column layout (main content + sidebar)
-  - Drop caps on first paragraph
-  - Section labels in uppercase red
-  - Sidebar with skills list and contact box
-  - Projects as headline cards
-  
-  Structure:
-  1. Masthead (date, name, subtitle)
-  2. Navigation (centered links)
-  3. Main (2 columns: articles | sidebar)
-  4. Article-style sections with headlines
-  5. Dark contact box in sidebar
-
-TEMPLATE: enterprise-dark (RECOMMENDED FOR EXPERIENCED PROFESSIONALS)
-  Fonts: Fraunces (serif display, italic for emphasis) + Epilogue (sans body)
-  Colors: 
-    --bg: #09090b (near black)
-    --s1: #111113 (surface 1)
-    --s2: #18181b (surface 2)
-    --border: rgba(255,255,255,0.07)
-    --text: #fafaf9 (white)
-    --text2: #a1a1aa (muted)
-    --accent: #f59e0b (amber/gold)
-    --green: #22c55e (for "current" badges)
-    --blue: #3b82f6
-    --red: #ef4444
-  
-  Navigation Structure:
-    <nav> with position:fixed, backdrop-filter:blur(20px)
-    - Left: Logo/Name (serif font)
-    - Center: <a href="#experience">Experience</a> | <a href="#skills">Skills</a> | <a href="#achievements">Achievements</a> | <a href="#contact">Contact</a>
-    - Right: "Open to opportunities" badge + "Hire me" CTA linking to #contact
-  
-  Hero Structure:
-    - Left (60%): Eyebrow label, large name (split across 3 lines, mix of weights), description, CTA buttons
-    - Right (40%): Company cards with colored dots, stats grid (4 boxes with key metrics)
-  
-  Key Elements:
-    - Loading screen with pulsing name in italic serif
-    - Fixed nav with backdrop blur, "Open to opportunities" badge with blinking dot
-    - Skills ticker with ✦ separators, infinite scroll animation
-    - Experience (id="experience"): 2-column grid (left: company/role/tech chips, right: bullet highlights)
-    - Each experience bullet has colored dot + strong tags for emphasis
-    - Skills (id="skills"): Cards with emoji icon, uppercase label, chip-style skills
-    - Achievements (id="achievements"): Card grid with icons
-    - Personal section: Left quote (border-left accent), right details grid
-    - Contact (id="contact"): Radial gradient glow behind title
-  
-  CSS Patterns:
-    - html { scroll-behavior: smooth }
-    - box-sizing: border-box on all elements
-    - backdrop-filter: blur(20px) on nav
-    - border-radius: 8-16px consistently
-    - transition: all 0.2s for smooth hovers
-    - button hovers: translateY(-2px) + opacity change
-    - section alternation: bg vs s1 background
-
-TEMPLATE: terminal-dark
-  Fonts: JetBrains Mono (monospace) + Syne (display)
-  Colors: #0d0d0d bg, #00ff88 accent, #e0e0e0 text
-  Feel: Custom cursor, terminal-style prompts, code aesthetic
-  Key element: Hero shows "$ whoami → [name]", blinking cursor animation
-
-TEMPLATE: game-hud (CREATIVE — RECOMMENDED)
-  Fonts: Press Start 2P (pixel) + Space Mono
-  Colors: 
-    --bg: #0f0f23 (dark blue-black)
-    --accent1: #00ff41 (matrix green)
-    --accent2: #ff6b35 (orange XP)
-    --accent3: #9d4edd (purple rare)
-  
-  KEY EXPERIENCE: Video game UI
-  - Top HUD bar: Name (player name), Level badge, XP progress bar
-  - Health-style bars for skill proficiency (CSS animated fill)
-  - "ACHIEVEMENT UNLOCKED" popups on scroll
-  - Player stats card: LVL, XP, Class (Developer/Designer)
-  - Projects as "QUEST LOG" entries with difficulty ratings
-  - Experience as "BATTLE HISTORY" timeline
-  - 8-bit style icons and pixel borders
-  - Scanline overlay effect
-  - "PRESS START" flashing on load screen
-  - Sound wave animation on hover (visual, no audio)
-
-TEMPLATE: ios-app (CREATIVE — MODERN)
-  Fonts: SF Pro Display (or Inter as fallback) + SF Mono
-  Colors: 
-    --bg: linear-gradient(180deg, #1c1c1e 0%, #000000 100%)
-    --card: rgba(255,255,255,0.08)
-    --accent: #0a84ff (iOS blue)
-  
-  KEY EXPERIENCE: iPhone home screen
-  - Grid of app icons (rounded squares with gradients)
-  - Projects = app icons that "open" on click (scale + modal)
-  - Dynamic Island at top showing current status
-  - Dock at bottom with main links
-  - Control Center style contact panel (swipe down effect)
-  - Lockscreen with time + "Slide to explore"
-  - App opening animation (scale + fade)
-  - Haptic-like micro-interactions
-
-TEMPLATE: space-galaxy (CREATIVE — AI/ML FOCUSED)
-  Fonts: Orbitron (display) + Space Grotesk
-  Colors: 
-    --bg: #0a0a1a (deep space)
-    --stars: #ffffff
-    --nebula1: #7c3aed (purple)
-    --nebula2: #06b6d4 (cyan)
-    --accent: #fbbf24 (gold/sun)
-  
-  KEY EXPERIENCE: Space exploration theme
-  - Starfield background (CSS animated twinkle)
-  - Floating astronaut or satellite avatar
-  - Planets represent skill categories (orbit animation)
-  - Constellations connect related projects (SVG lines)
-  - "MISSION CONTROL" navigation
-  - Rocket launch on page load
-  - Shooting stars on scroll (CSS animation)
-  - Nebula gradient overlays
-  - "Transmission received" for contact section
-
-TEMPLATE: retro-vhs (CREATIVE — 80s NOSTALGIA)
-  Fonts: VT323 (digital) + Press Start 2P
-  Colors: 
-    --bg: #1a1a2e
-    --neon-pink: #ff0080
-    --neon-cyan: #00ffff
-    --neon-yellow: #ffff00
-    --grid: rgba(255,0,128,0.3)
-  
-  KEY EXPERIENCE: VHS tape / 80s aesthetic
-  - CRT scanline overlay (CSS)
-  - VHS tracking distortion on hover (transform + opacity flicker)
-  - "PLAY ▶" button to start exploring
-  - Channel numbers for sections (CH 01, CH 02)
-  - Static noise transition between sections
-  - Neon glow text effects
-  - Grid background (synthwave style)
-  - Glitch text effect on hover
-  - "TRACKING" slider animation on load
-
-TEMPLATE: spotify-player (CREATIVE — MUSIC THEMED)
-  Fonts: Circular Std (or Montserrat as fallback)
-  Colors: 
-    --bg: #121212 (Spotify dark)
-    --card: #181818
-    --accent: #1db954 (Spotify green)
-    --text: #ffffff
-    --text2: #b3b3b3
-  
-  KEY EXPERIENCE: Music player interface
-  - Sidebar navigation like Spotify
-  - "Now Playing" hero with album art style profile photo
-  - Project cards as album/playlist covers
-  - Progress bar with current position (animated)
-  - Skills as genre tags with play counts
-  - Experience timeline as tracklist
-  - Volume slider for "interest level"
-  - Shuffle/repeat icons as navigation
-  - "Made For You" section style recommendations
-
-TEMPLATE: dashboard-analytics (CREATIVE — DATA VIZ)
-  Fonts: Inter + IBM Plex Mono
-  Colors: 
-    --bg: #0f172a (slate)
-    --card: rgba(255,255,255,0.05)
-    --accent1: #22c55e (green)
-    --accent2: #3b82f6 (blue)
-    --accent3: #f59e0b (amber)
-  
-  KEY EXPERIENCE: Analytics dashboard
-  - Sidebar navigation with icons
-  - Cards with varying sizes (CSS Grid)
-  - Animated number counters (count up on view)
-  - Skill charts (bar chart, radar chart with CSS)
-  - Activity heatmap for projects
-  - Status indicators (• Online, Active)
-  - Real-time looking metrics
-  - Glassmorphism cards throughout
-  - Mini charts in stat cards
-
-TEMPLATE: newspaper-frontpage (CREATIVE — EDITORIAL)
-  Fonts: Playfair Display (headlines) + Libre Baskerville (body)
-  Colors: 
-    --bg: #f5f1e8 (paper)
-    --ink: #1a1a1a
-    --accent: #c41230 (red)
-    --sepia: #e8e0d0
-  
-  KEY EXPERIENCE: Newspaper front page
-  - Masthead with name as newspaper title
-  - Date and "Issue #" in header
-  - Multi-column layout (CSS columns)
-  - Headlines with varying sizes
-  - Bylines under each section
-  - Pull quotes with giant quotation marks
-  - "BREAKING NEWS" ticker for skills
-  - Sidebar with classified-style contact
-  - Drop caps on first paragraphs
-  - Paper texture overlay
-
-TEMPLATE: editorial-light
-  Fonts: Playfair Display (serif) + DM Sans (body)
-  Colors: #faf8f4 bg, #c8490a accent, #1a1614 ink
-  Feel: Magazine layout, 2-column hero, scrolling marquee on dark bg
-  Key element: Italic serif name treatment, horizontal project list
-
-TEMPLATE: gradient-dark
-  Fonts: Outfit (all weights)
-  Colors: #080810 bg, #7c3aed + #2563eb + #06b6d4 gradients
-  Feel: Glassmorphism cards, glowing orbs, gradient text
-  Key element: Animated gradient name, timeline experience
-
-TEMPLATE: brutalist
-  Fonts: Bebas Neue (display) + Space Grotesk (body)
-  Colors: #f5f0e8 bg, #111 ink, #ff4500 accent
-  Feel: Grid-based, heavy borders, ticker tape, high contrast
-  Key element: Outlined + solid name treatment, hover row inversion
-
-TEMPLATE: minimal-warm
-  Fonts: Cormorant Garamond (serif) + Karla (body)
-  Colors: #f9f5ef bg, #b5441a accent, #2c2420 ink
-  Feel: Japanese minimalism, generous whitespace, italic serif
-  Key element: Quote-style about section, understated elegance
-
-TEMPLATE: minimal-dark
-  Fonts: Inter (clean sans) + JetBrains Mono (code)
-  Colors: #0a0a0a bg, #fafafa text, #3b82f6 accent
-  Feel: Clean monochrome, developer-focused, high readability
-  Key element: Simple cards, subtle borders, code-like stats display
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXPERIENCE SECTION GUIDELINES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-For each job/internship, create a 2-column layout:
-- LEFT: Company name (with colored badge if current/notable), role, period, tech chips
-- RIGHT: 3-5 bullet points with:
-  * Colored accent bullets (not plain •)
-  * <strong> tags around key metrics and technologies
-  * Quantified achievements (X%, Y users, Z services)
-
-Example bullet format:
-"Key contributor to <strong>Adobe Firefly AI Platform</strong> — delivered dynamic EC2-based 
-machine provisioning system for scalable, cost-optimized AI model training."
+❌ DON'T:
+- Invent fake data (projects, experience, skills not mentioned)
+- Use generic phrases ("passionate developer", "tech enthusiast")
+- Include sections that have no data (e.g., Experience if internships is empty)
+- Use fonts/colors outside the template specification
+- Generate fewer than 8000 tokens of HTML
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT FORMAT
@@ -723,12 +430,12 @@ Output ONLY the complete HTML file starting with:
 <!DOCTYPE html>
 
 Do NOT add any explanation before or after the HTML.
-Do NOT wrap in markdown code blocks.
 The HTML must be complete and immediately renderable in a browser.
 
-End the HTML with exactly:
+End with:
 <!-- FOLIO_GENERATION_COMPLETE -->
 `;
+}
 
 export async function isAIConfigured(): Promise<boolean> {
   return Boolean(
@@ -854,12 +561,14 @@ DO NOT ask them to re-enter their basic info, skills, projects, or experience.
 Just ask: "What would you like to change?"
 
 Common requests:
-- "Change template" → Show template options
-- "Make it creative" → Suggest creative templates
+- "Change design/template" → Say "Got it! Click **Regenerate** for a new design!"
+- "Make it creative" → Say "Sure! Click **Regenerate** for a creative look!"
 - "Add something" → Ask only for that specific item
 - "Update X" → Help them update just X
 
-After they specify changes, say: "Got it! Click **Re-Generate** to apply the changes."
+**DO NOT show template options. Designs are auto-selected.**
+
+After they specify changes, say: "Got it! Click **Regenerate** to apply the changes."
 
 Their current data (DO NOT RE-ASK FOR THIS):
 ${JSON.stringify(studentInfo, null, 2)}`;
@@ -873,15 +582,458 @@ ${JSON.stringify(studentInfo, null, 2)}`;
   return callChatModel(apiMessages);
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SMART SECTION-BASED EDITING SYSTEM
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Portfolio sections that can be independently edited
+ */
+type PortfolioSection = 
+  | "hero"
+  | "skills"
+  | "projects"
+  | "experience"
+  | "education"
+  | "achievements"
+  | "contact"
+  | "navigation"
+  | "footer"
+  | "styles";
+
+/**
+ * Edit intent classification
+ */
+type EditIntent = {
+  type: "add_section" | "modify_section" | "remove_section" | "style_change" | "content_update" | "full_regenerate";
+  sections: PortfolioSection[];
+  description: string;
+  requiresFullRegenerate: boolean;
+};
+
+/**
+ * Section markers for HTML parsing
+ */
+const SECTION_MARKERS: Record<PortfolioSection, { start: RegExp; end: RegExp }> = {
+  hero: { 
+    start: /<!--\s*SECTION:\s*HERO\s*-->|<section[^>]*id=["']?hero["']?[^>]*>|<header[^>]*class=["'][^"']*hero[^"']*["'][^>]*>/i,
+    end: /<!--\s*END:\s*HERO\s*-->|<\/section>|<\/header>/i
+  },
+  skills: {
+    start: /<!--\s*SECTION:\s*SKILLS\s*-->|<section[^>]*id=["']?skills["']?[^>]*>/i,
+    end: /<!--\s*END:\s*SKILLS\s*-->|(?=<section[^>]*id=["']?(?!skills))/i
+  },
+  projects: {
+    start: /<!--\s*SECTION:\s*PROJECTS\s*-->|<section[^>]*id=["']?projects["']?[^>]*>/i,
+    end: /<!--\s*END:\s*PROJECTS\s*-->|(?=<section[^>]*id=["']?(?!projects))/i
+  },
+  experience: {
+    start: /<!--\s*SECTION:\s*EXPERIENCE\s*-->|<section[^>]*id=["']?experience["']?[^>]*>/i,
+    end: /<!--\s*END:\s*EXPERIENCE\s*-->|(?=<section[^>]*id=["']?(?!experience))/i
+  },
+  education: {
+    start: /<!--\s*SECTION:\s*EDUCATION\s*-->|<section[^>]*id=["']?education["']?[^>]*>/i,
+    end: /<!--\s*END:\s*EDUCATION\s*-->|(?=<section[^>]*id=["']?(?!education))/i
+  },
+  achievements: {
+    start: /<!--\s*SECTION:\s*ACHIEVEMENTS\s*-->|<section[^>]*id=["']?achievements["']?[^>]*>/i,
+    end: /<!--\s*END:\s*ACHIEVEMENTS\s*-->|(?=<section[^>]*id=["']?(?!achievements))/i
+  },
+  contact: {
+    start: /<!--\s*SECTION:\s*CONTACT\s*-->|<section[^>]*id=["']?contact["']?[^>]*>/i,
+    end: /<!--\s*END:\s*CONTACT\s*-->|(?=<section[^>]*id=["']?(?!contact))|<\/section>\s*(?=<footer)/i
+  },
+  navigation: {
+    start: /<!--\s*SECTION:\s*NAV\s*-->|<nav[^>]*>/i,
+    end: /<!--\s*END:\s*NAV\s*-->|<\/nav>/i
+  },
+  footer: {
+    start: /<!--\s*SECTION:\s*FOOTER\s*-->|<footer[^>]*>/i,
+    end: /<!--\s*END:\s*FOOTER\s*-->|<\/footer>/i
+  },
+  styles: {
+    start: /<style[^>]*>/i,
+    end: /<\/style>/i
+  }
+};
+
+/**
+ * Analyze user's edit request to determine what needs to change
+ */
+async function analyzeEditIntent(
+  userMessage: string,
+  existingHtml: string
+): Promise<EditIntent> {
+  const analysisPrompt = `Analyze this edit request and classify what changes are needed.
+
+**User's request:** "${userMessage}"
+
+**Available sections in the portfolio:**
+- hero (name, title, intro, profile picture area)
+- skills (skill tags, categories, skill bars)
+- projects (project cards with descriptions)
+- experience (work experience, internships)
+- education (college info, degrees)
+- achievements (awards, certifications)
+- contact (contact form, email, social links)
+- navigation (top nav bar, menu items)
+- footer (copyright, bottom links)
+- styles (colors, fonts, spacing, overall theme)
+
+**Classify the edit into ONE of these types:**
+- "add_section": User wants to add a new section or element
+- "modify_section": User wants to change existing content in a section
+- "remove_section": User wants to delete a section
+- "style_change": User only wants visual changes (colors, fonts, spacing)
+- "content_update": User wants to update specific text/data (not structure)
+- "full_regenerate": Major changes requiring complete regeneration (template change, layout overhaul)
+
+**Return ONLY this JSON:**
+{
+  "type": "add_section|modify_section|remove_section|style_change|content_update|full_regenerate",
+  "sections": ["affected_section1", "affected_section2"],
+  "description": "Brief description of what user wants",
+  "requiresFullRegenerate": false
+}
+
+**Examples:**
+- "Add a contact form" → {"type": "add_section", "sections": ["contact"], "description": "Add contact form to contact section", "requiresFullRegenerate": false}
+- "Make it more colorful" → {"type": "style_change", "sections": ["styles"], "description": "Update color scheme to be more vibrant", "requiresFullRegenerate": false}
+- "Change my name to John" → {"type": "content_update", "sections": ["hero"], "description": "Update name in hero section", "requiresFullRegenerate": false}
+- "Add a testimonials section" → {"type": "add_section", "sections": ["testimonials"], "description": "Add new testimonials section", "requiresFullRegenerate": true}
+- "Use a completely different template" → {"type": "full_regenerate", "sections": [], "description": "Complete template change", "requiresFullRegenerate": true}
+- "Add more projects" → {"type": "modify_section", "sections": ["projects"], "description": "Add more project cards", "requiresFullRegenerate": false}`;
+
+  const response = await callChatModel([
+    { role: "system", content: "You are an expert at analyzing edit requests for portfolio websites. Return only valid JSON." },
+    { role: "user", content: analysisPrompt }
+  ]);
+
+  try {
+    const cleanJson = response.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const intent = JSON.parse(cleanJson) as EditIntent;
+    
+    // Force full regenerate for certain cases
+    if (intent.sections.some(s => !Object.keys(SECTION_MARKERS).includes(s))) {
+      intent.requiresFullRegenerate = true;
+    }
+    
+    return intent;
+  } catch {
+    console.warn("[AI] Failed to parse edit intent, defaulting to full regenerate");
+    return {
+      type: "full_regenerate",
+      sections: [],
+      description: userMessage,
+      requiresFullRegenerate: true
+    };
+  }
+}
+
+/**
+ * Extract a specific section from HTML
+ */
+function extractSection(html: string, section: PortfolioSection): string | null {
+  // First try comment-based markers (most reliable)
+  const commentStart = new RegExp(`<!--\\s*SECTION:\\s*${section.toUpperCase()}\\s*-->`);
+  const commentEnd = new RegExp(`<!--\\s*END:\\s*${section.toUpperCase()}\\s*-->`);
+  
+  const startMatch = html.match(commentStart);
+  const endMatch = html.match(commentEnd);
+  
+  if (startMatch && endMatch && startMatch.index !== undefined && endMatch.index !== undefined) {
+    return html.substring(startMatch.index, endMatch.index + endMatch[0].length);
+  }
+  
+  // Fallback: Try to find section by id attribute
+  const idPattern = new RegExp(`<section[^>]*id=["']${section}["'][^>]*>`, 'i');
+  const idMatch = html.match(idPattern);
+  
+  if (idMatch && idMatch.index !== undefined) {
+    // Find the closing </section> tag
+    let depth = 1;
+    let pos = idMatch.index + idMatch[0].length;
+    while (depth > 0 && pos < html.length) {
+      const nextOpen = html.indexOf('<section', pos);
+      const nextClose = html.indexOf('</section>', pos);
+      
+      if (nextClose === -1) break;
+      
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        pos = nextOpen + 8;
+      } else {
+        depth--;
+        if (depth === 0) {
+          return html.substring(idMatch.index, nextClose + 10);
+        }
+        pos = nextClose + 10;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Generate only a specific section
+ */
+async function generateSection(
+  section: PortfolioSection,
+  studentInfo: StudentInfo,
+  existingHtml: string,
+  editDescription: string,
+  existingSection: string | null
+): Promise<string> {
+  const sectionPrompt = `Generate ONLY the ${section.toUpperCase()} section for a portfolio.
+
+**User's request:** ${editDescription}
+
+**Student Info:**
+${JSON.stringify(studentInfo, null, 2)}
+
+**Current HTML structure (for style reference):**
+\`\`\`html
+${existingHtml.substring(0, 3000)}
+\`\`\`
+
+${existingSection ? `**Current ${section} section to modify:**
+\`\`\`html
+${existingSection}
+\`\`\`` : `**Note:** This is a NEW section. Match the existing design style.`}
+
+**RULES:**
+1. Return ONLY the section HTML, nothing else
+2. Match the existing design's colors, fonts, and spacing
+3. Use the same CSS class naming conventions
+4. Include section markers: <!-- SECTION: ${section.toUpperCase()} --> and <!-- END: ${section.toUpperCase()} -->
+5. Do NOT include <style> or <script> tags
+6. Ensure the section has the proper id attribute (id="${section}")
+
+**Return the HTML for the ${section} section:**`;
+
+  const response = await callGenerationModel([
+    { role: "system", content: `You are an expert web developer. Generate ONLY the requested HTML section, nothing more. Match the existing design style exactly.` },
+    { role: "user", content: sectionPrompt }
+  ]);
+
+  return response
+    .replace(/```html\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
+}
+
+/**
+ * Generate only style/CSS changes
+ */
+async function generateStyleUpdate(
+  existingHtml: string,
+  styleDescription: string
+): Promise<string> {
+  // Extract existing styles
+  const styleMatch = existingHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const existingStyles = styleMatch ? styleMatch[1] : "";
+
+  const stylePrompt = `Update the CSS styles for a portfolio based on this request.
+
+**User's request:** ${styleDescription}
+
+**Current CSS:**
+\`\`\`css
+${existingStyles.substring(0, 4000)}
+\`\`\`
+
+**RULES:**
+1. Return ONLY the updated CSS content (what goes inside <style> tags)
+2. Preserve all existing functionality (animations, responsive rules, etc.)
+3. Only change what the user requested (colors, fonts, spacing, etc.)
+4. Keep all class names the same
+5. Do NOT include <style> tags in your response
+
+**Return the updated CSS:**`;
+
+  const response = await callChatModel([
+    { role: "system", content: "You are a CSS expert. Return ONLY CSS code, no explanations." },
+    { role: "user", content: stylePrompt }
+  ]);
+
+  return response
+    .replace(/```css\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
+}
+
+/**
+ * Merge a new/updated section into existing HTML
+ */
+function mergeSection(
+  existingHtml: string,
+  section: PortfolioSection,
+  newSectionHtml: string,
+  operation: "add" | "modify" | "remove"
+): string {
+  const existingSection = extractSection(existingHtml, section);
+  
+  if (operation === "remove") {
+    if (existingSection) {
+      return existingHtml.replace(existingSection, "");
+    }
+    return existingHtml;
+  }
+  
+  if (operation === "modify" && existingSection) {
+    // Replace existing section
+    return existingHtml.replace(existingSection, newSectionHtml);
+  }
+  
+  if (operation === "add") {
+    // Find the right place to insert
+    // Order: hero -> skills -> projects -> experience -> education -> achievements -> contact -> footer
+    const sectionOrder: PortfolioSection[] = ["hero", "skills", "projects", "experience", "education", "achievements", "contact", "footer"];
+    const targetIndex = sectionOrder.indexOf(section);
+    
+    // Find the section that should come after
+    for (let i = targetIndex + 1; i < sectionOrder.length; i++) {
+      const nextSection = extractSection(existingHtml, sectionOrder[i]);
+      if (nextSection) {
+        const insertPos = existingHtml.indexOf(nextSection);
+        return existingHtml.substring(0, insertPos) + newSectionHtml + "\n\n" + existingHtml.substring(insertPos);
+      }
+    }
+    
+    // No section after, insert before </main> or </body>
+    const mainClose = existingHtml.indexOf("</main>");
+    if (mainClose !== -1) {
+      return existingHtml.substring(0, mainClose) + newSectionHtml + "\n" + existingHtml.substring(mainClose);
+    }
+    
+    const bodyClose = existingHtml.indexOf("</body>");
+    if (bodyClose !== -1) {
+      return existingHtml.substring(0, bodyClose) + newSectionHtml + "\n" + existingHtml.substring(bodyClose);
+    }
+  }
+  
+  // Fallback: If we can't figure out where to put it, just add it
+  if (existingSection) {
+    return existingHtml.replace(existingSection, newSectionHtml);
+  }
+  
+  return existingHtml;
+}
+
+/**
+ * Merge style updates into existing HTML
+ */
+function mergeStyles(existingHtml: string, newStyles: string): string {
+  const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/i;
+  const match = existingHtml.match(styleRegex);
+  
+  if (match) {
+    return existingHtml.replace(styleRegex, `<style>\n${newStyles}\n</style>`);
+  }
+  
+  // No existing style tag, add one in <head>
+  const headClose = existingHtml.indexOf("</head>");
+  if (headClose !== -1) {
+    return existingHtml.substring(0, headClose) + `<style>\n${newStyles}\n</style>\n` + existingHtml.substring(headClose);
+  }
+  
+  return existingHtml;
+}
+
+/**
+ * Smart portfolio editing - only regenerates what's needed
+ */
+export async function smartEditPortfolio(
+  existingHtml: string,
+  studentInfo: StudentInfo,
+  chatMessages: ChatMessage[]
+): Promise<{ html: string; editType: string; sectionsModified: string[] }> {
+  // Get the last user message to understand what they want
+  const lastUserMessage = [...chatMessages].reverse().find(m => m.role === "user")?.content ?? "";
+  
+  if (!lastUserMessage) {
+    return { html: existingHtml, editType: "none", sectionsModified: [] };
+  }
+  
+  console.log(`[Smart Edit] Analyzing request: "${lastUserMessage.substring(0, 100)}..."`);
+  
+  // Analyze what the user wants
+  const intent = await analyzeEditIntent(lastUserMessage, existingHtml);
+  console.log(`[Smart Edit] Intent: ${intent.type}, sections: [${intent.sections.join(", ")}], fullRegen: ${intent.requiresFullRegenerate}`);
+  
+  // If full regeneration is needed, return null to signal caller to use full generation
+  if (intent.requiresFullRegenerate) {
+    console.log(`[Smart Edit] Requiring full regeneration`);
+    return { html: "", editType: "full_regenerate", sectionsModified: [] };
+  }
+  
+  let updatedHtml = existingHtml;
+  const sectionsModified: string[] = [];
+  
+  // Handle style changes
+  if (intent.type === "style_change") {
+    console.log(`[Smart Edit] Generating style update`);
+    const newStyles = await generateStyleUpdate(existingHtml, intent.description);
+    updatedHtml = mergeStyles(updatedHtml, newStyles);
+    sectionsModified.push("styles");
+    return { html: updatedHtml, editType: intent.type, sectionsModified };
+  }
+  
+  // Handle section changes
+  for (const section of intent.sections as PortfolioSection[]) {
+    if (!Object.keys(SECTION_MARKERS).includes(section)) {
+      console.log(`[Smart Edit] Unknown section "${section}", skipping`);
+      continue;
+    }
+    
+    const existingSection = extractSection(existingHtml, section);
+    
+    if (intent.type === "remove_section") {
+      console.log(`[Smart Edit] Removing section: ${section}`);
+      updatedHtml = mergeSection(updatedHtml, section, "", "remove");
+      sectionsModified.push(section);
+    } else {
+      console.log(`[Smart Edit] Generating section: ${section}`);
+      const newSection = await generateSection(
+        section,
+        studentInfo,
+        existingHtml,
+        intent.description,
+        existingSection
+      );
+      
+      const operation = existingSection ? "modify" : "add";
+      updatedHtml = mergeSection(updatedHtml, section, newSection, operation);
+      sectionsModified.push(section);
+    }
+  }
+  
+  return { html: updatedHtml, editType: intent.type, sectionsModified };
+}
+
 export async function generatePortfolioHtml(
   studentInfo: StudentInfo,
   template: PortfolioTemplate,
   existingHtml?: string | null,
   chatMessages?: ChatMessage[]
 ): Promise<string> {
-  let prompt = HTML_GENERATION_PROMPT
-    .replace("{{STUDENT_INFO}}", JSON.stringify(studentInfo, null, 2))
-    .replace("{{TEMPLATE}}", template);
+  // If editing existing portfolio, try smart edit first
+  if (existingHtml && chatMessages && chatMessages.length > 0) {
+    const smartResult = await smartEditPortfolio(existingHtml, studentInfo as StudentInfo, chatMessages);
+    
+    // If smart edit succeeded (didn't require full regeneration)
+    if (smartResult.html && smartResult.editType !== "full_regenerate") {
+      console.log(`[AI] Smart edit successful: ${smartResult.editType}, modified: [${smartResult.sectionsModified.join(", ")}]`);
+      return smartResult.html;
+    }
+    
+    console.log(`[AI] Smart edit requires full regeneration, proceeding with full generation`);
+  }
+  
+  // Full generation (new portfolio or smart edit requested full regen)
+  // Use dynamic prompt that conditionally includes sections based on user data
+  let prompt = buildGenerationPrompt(studentInfo, template);
 
   // Include existing HTML as reference if editing
   if (existingHtml) {
@@ -896,6 +1048,19 @@ The user is editing their existing portfolio. Apply the changes they requested i
         .join("\n");
       prompt += `\n\n**Conversation about changes:**\n${conversation}`;
     }
+    
+    // Add section markers instruction for future edits
+    prompt += `\n\n**IMPORTANT: Add section markers for future editing:**
+Wrap each section with HTML comments for easy identification:
+<!-- SECTION: HERO -->
+... hero content ...
+<!-- END: HERO -->
+
+<!-- SECTION: SKILLS -->
+... skills content ...
+<!-- END: SKILLS -->
+
+Use these markers: HERO, SKILLS, PROJECTS, EXPERIENCE, EDUCATION, ACHIEVEMENTS, CONTACT, FOOTER`;
   }
 
   const response = await callGenerationModel([
