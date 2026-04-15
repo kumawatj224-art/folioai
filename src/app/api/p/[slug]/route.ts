@@ -13,12 +13,23 @@ type RouteParams = {
 
 export async function GET(request: Request, { params }: RouteParams) {
   const { slug } = await params;
+  const url = new URL(request.url);
+  
+  console.log("[api/p] Request for slug:", slug, "host:", request.headers.get("host"), "url:", url.pathname);
   
   if (!slug) {
+    console.log("[api/p] ERROR: No slug provided");
     return new NextResponse("Not Found", { status: 404 });
   }
 
   const portfolio = await chatPortfolioRepository.findBySlug(slug);
+  
+  console.log("[api/p] Portfolio result:", { 
+    found: !!portfolio, 
+    status: portfolio?.status, 
+    hasHtml: !!portfolio?.htmlContent,
+    liveUrl: portfolio?.liveUrl 
+  });
 
   if (!portfolio || portfolio.status !== "deployed" || !portfolio.htmlContent) {
     return new NextResponse(
