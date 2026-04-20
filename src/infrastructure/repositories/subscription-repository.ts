@@ -111,7 +111,7 @@ async function createSubscriptionInDb(subscription: UserSubscription): Promise<v
       status: subscription.status,
       generations_used_this_month: subscription.usage.generationsUsedThisMonth,
       lifetime_generations_used: subscription.usage.generationsUsedTotal,
-      regenerations_used_today: subscription.usage.regenerationsUsedToday,
+      regenerations_used_today: subscription.plan === 'free' ? subscription.usage.regenerationsCount : subscription.usage.regenerationsUsedToday,
       generations_reset_date: subscription.usage.monthResetDate.toISOString(),
       regenerations_reset_date: subscription.usage.dayResetDate.toISOString().split('T')[0],
     });
@@ -132,7 +132,7 @@ async function updateSubscriptionInDb(subscription: UserSubscription): Promise<v
       status: subscription.status,
       generations_used_this_month: subscription.usage.generationsUsedThisMonth,
       lifetime_generations_used: subscription.usage.generationsUsedTotal,
-      regenerations_used_today: subscription.usage.regenerationsUsedToday,
+      regenerations_used_today: subscription.plan === 'free' ? subscription.usage.regenerationsCount : subscription.usage.regenerationsUsedToday,
       generations_reset_date: subscription.usage.monthResetDate.toISOString(),
       regenerations_reset_date: subscription.usage.dayResetDate.toISOString().split('T')[0],
       razorpay_customer_id: subscription.razorpayCustomerId,
@@ -160,10 +160,14 @@ function mapDbToSubscription(row: Record<string, unknown>): UserSubscription {
     status: row.status as 'active' | 'cancelled' | 'expired' | 'past_due',
     usage: {
       generationsUsedThisMonth: (row.generations_used_this_month as number) || 0,
-      generationsUsedTotal: (row.lifetime_generations_used as number) || 0,
       monthResetDate: row.generations_reset_date ? new Date(row.generations_reset_date as string) : getNextMonthReset(),
       regenerationsUsedToday: (row.regenerations_used_today as number) || 0,
       dayResetDate: row.regenerations_reset_date ? new Date(row.regenerations_reset_date as string) : getTomorrowReset(),
+      // Free tier split tracking
+      newGenerationsCount: (row.lifetime_generations_used as number) || 0,
+      regenerationsCount: (row.regenerations_used_today as number) || 0,
+      // Legacy field
+      generationsUsedTotal: (row.lifetime_generations_used as number) || 0,
       portfolioCount: 0, // Calculated separately
     },
     razorpaySubscriptionId: row.razorpay_subscription_id as string | undefined,
@@ -209,6 +213,14 @@ export async function updatePlan(
  * Record a generation (full portfolio creation)
  * @param userEmail - Optional email for admin bypass check
  */
+/**
+ * Record a brand-new portfolio generation.
+ *
+ * Free tier: increments new_generations_count (max 1, lifetime).
+ * Paid plans: increments generationsUsedThisMonth (monthly).
+ *
+ * @param userEmail - Optional email for admin bypass check
+ */
 export async function recordGeneration(userId: string, userEmail?: string | null): Promise<{ 
   allowed: boolean; 
   subscription: UserSubscription;
@@ -219,20 +231,31 @@ export async function recordGeneration(userId: string, userEmail?: string | null
   
   // Admin bypass - no limits
   if (isAdminEmail(userEmail)) {
-    console.log('[Subscription] ADMIN: Bypassing generation limit for', userEmail);
+    console.log('[Subscription] ADMIN: Bypassing new-generation limit for', userEmail);
     return { allowed: true, subscription };
   }
   
-  // Check limits
+  // ── Free tier: check new_generations_count (max 1, lifetime) ──────────────
   if (subscription.plan === 'free') {
-    if (subscription.usage.generationsUsedTotal >= limits.generationsPerMonth) {
+    if (subscription.usage.newGenerationsCount >= limits.maxNewGenerations) {
       return { 
         allowed: false, 
         subscription,
-        reason: `You've used all ${limits.generationsPerMonth} free generations.`
+        reason: `You've used your 1 free portfolio generation. Upgrade to create more!`
       };
     }
+    // Record usage: increment new_generations_count
+    subscription = {
+      ...subscription,
+      usage: {
+        ...subscription.usage,
+        newGenerationsCount: subscription.usage.newGenerationsCount + 1,
+        generationsUsedTotal: subscription.usage.generationsUsedTotal + 1, // Keep legacy in sync
+      },
+      updatedAt: new Date(),
+    };
   } else {
+    // ── Paid plans: check monthly usage ──────────────────────────────────────
     if (subscription.usage.generationsUsedThisMonth >= limits.generationsPerMonth) {
       return { 
         allowed: false, 
@@ -240,34 +263,38 @@ export async function recordGeneration(userId: string, userEmail?: string | null
         reason: `You've used all ${limits.generationsPerMonth} generations this month.`
       };
     }
+    // Record usage: increment monthly counter
+    subscription = {
+      ...subscription,
+      usage: {
+        ...subscription.usage,
+        generationsUsedThisMonth: subscription.usage.generationsUsedThisMonth + 1,
+        generationsUsedTotal: subscription.usage.generationsUsedTotal + 1,
+      },
+      updatedAt: new Date(),
+    };
   }
   
-  // Record usage
-  subscription = {
-    ...subscription,
-    usage: {
-      ...subscription.usage,
-      generationsUsedThisMonth: subscription.usage.generationsUsedThisMonth + 1,
-      generationsUsedTotal: subscription.usage.generationsUsedTotal + 1,
-    },
-    updatedAt: new Date(),
-  };
-  
-  console.log('[Subscription] Recording generation for user:', userId, {
-    before: subscription.usage.generationsUsedTotal - 1,
-    after: subscription.usage.generationsUsedTotal,
+  console.log('[Subscription] Recording new generation for user:', userId, {
+    newGenerationsCount: subscription.usage.newGenerationsCount,
+    generationsUsedThisMonth: subscription.usage.generationsUsedThisMonth,
   });
   
   await updateSubscriptionInDb(subscription);
-  
-  // Update cache with new subscription data
   subscriptionCache.set(userId, { data: subscription, expiresAt: Date.now() + CACHE_TTL });
-  
   return { allowed: true, subscription };
 }
 
 /**
  * Record a regeneration (editing existing portfolio)
+ * @param userEmail - Optional email for admin bypass check
+ */
+/**
+ * Record a portfolio regeneration (editing/refreshing an existing portfolio).
+ *
+ * Free tier: increments regenerations_count (max 2, lifetime — never resets).
+ * Paid plans: increments regenerationsUsedToday (daily reset).
+ *
  * @param userEmail - Optional email for admin bypass check
  */
 export async function recordRegeneration(userId: string, userEmail?: string | null): Promise<{
@@ -285,12 +312,38 @@ export async function recordRegeneration(userId: string, userEmail?: string | nu
     return { allowed: true, subscription };
   }
   
-  // Unlimited for pro/lifetime
+  // ── Free tier: check lifetime regenerations_count (max 2, never resets) ───
+  if (subscription.plan === 'free') {
+    if (subscription.usage.regenerationsCount >= limits.maxRegenerations) {
+      return {
+        allowed: false,
+        subscription,
+        reason: `You've used all 2 free regenerations. Upgrade to unlock unlimited regenerations!`,
+      };
+    }
+    // Record usage: increment regenerations_count
+    subscription = {
+      ...subscription,
+      usage: {
+        ...subscription.usage,
+        regenerationsCount: subscription.usage.regenerationsCount + 1,
+      },
+      updatedAt: new Date(),
+    };
+    console.log('[Subscription] Recording FREE regeneration for user:', userId, {
+      regenerationsCount: subscription.usage.regenerationsCount,
+    });
+    await updateSubscriptionInDb(subscription);
+    subscriptionCache.set(userId, { data: subscription, expiresAt: Date.now() + CACHE_TTL });
+    return { allowed: true, subscription };
+  }
+  
+  // ── Paid plans: unlimited if regenerationsPerDay >= 999 ───────────────────
   if (limits.regenerationsPerDay >= 999) {
     return { allowed: true, subscription };
   }
   
-  // Check daily limit
+  // ── Paid plans: check daily limit ─────────────────────────────────────────
   if (subscription.usage.regenerationsUsedToday >= limits.regenerationsPerDay) {
     const resetIn = formatTimeUntil(subscription.usage.dayResetDate);
     return { 
@@ -301,7 +354,7 @@ export async function recordRegeneration(userId: string, userEmail?: string | nu
     };
   }
   
-  // Record usage
+  // Record usage: increment daily counter
   subscription = {
     ...subscription,
     usage: {
@@ -311,15 +364,12 @@ export async function recordRegeneration(userId: string, userEmail?: string | nu
     updatedAt: new Date(),
   };
   
-  console.log('[Subscription] Recording regeneration for user:', userId, {
+  console.log('[Subscription] Recording PAID regeneration for user:', userId, {
     regenerationsUsedToday: subscription.usage.regenerationsUsedToday,
   });
   
   await updateSubscriptionInDb(subscription);
-  
-  // Update cache with new subscription data
   subscriptionCache.set(userId, { data: subscription, expiresAt: Date.now() + CACHE_TTL });
-  
   return { allowed: true, subscription };
 }
 
@@ -443,6 +493,9 @@ export async function _resetUserUsage(userId: string): Promise<void> {
   subscription.usage.generationsUsedThisMonth = 0;
   subscription.usage.generationsUsedTotal = 0;
   subscription.usage.regenerationsUsedToday = 0;
+  // Also reset free-tier split counters
+  subscription.usage.newGenerationsCount = 0;
+  subscription.usage.regenerationsCount = 0;
   await updateSubscriptionInDb(subscription);
   subscriptionCache.delete(userId);
 }
