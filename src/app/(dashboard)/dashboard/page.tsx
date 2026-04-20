@@ -7,18 +7,38 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { VisitButton } from "@/components/ui/visit-button";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
+import { UpgradePromptBanner } from "@/components/ui/upgrade-prompt-banner";
 
-export default async function DashboardPage() {
+type PageProps = {
+  searchParams: Promise<{ upgrade?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await getCurrentSession();
   
   if (!session?.user) {
     redirect("/");
   }
 
+  const { upgrade } = await searchParams;
   const portfolios = await chatPortfolioRepository.listSummaries(session.user.id ?? "");
 
   return (
     <div className="space-y-8">
+      {/* Upgrade Prompt Banner — shown when redirected from a limit-reached guard */}
+      {upgrade === "new_generation_limit" && (
+        <UpgradePromptBanner
+          type="generation"
+          message="You've used your 1 free portfolio generation. Upgrade to create unlimited portfolios!"
+        />
+      )}
+      {upgrade === "regeneration_limit" && (
+        <UpgradePromptBanner
+          type="regeneration"
+          message="You've used all 2 free regenerations. Upgrade to unlock unlimited regenerations!"
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

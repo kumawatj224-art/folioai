@@ -11,10 +11,8 @@ import {
 } from "@/infrastructure/services/ai-service";
 import { 
   getSubscription,
-  recordGeneration,
-  recordRegeneration,
 } from "@/infrastructure/repositories/subscription-repository";
-import { getUsageDisplay } from "@/domain/entities/subscription";
+import { getUsageDisplay, canGenerate, canRegenerate } from "@/domain/entities/subscription";
 import type { ChatMessage, StudentInfo, PortfolioTemplate } from "@/domain/entities/chat";
 
 type ChatRequestBody = {
@@ -74,8 +72,8 @@ export async function POST(request: NextRequest) {
       const userEmail = session.user.email;
       
       if (isEditMode) {
-        // Regeneration - check daily limit
-        const result = await recordRegeneration(session.user.id, userEmail);
+        // Regeneration - check daily limit WITHOUT updating
+        const result = canRegenerate(subscription);
         if (!result.allowed) {
           return NextResponse.json(
             { 
@@ -83,21 +81,21 @@ export async function POST(request: NextRequest) {
               upgradeRequired: true,
               limitType: "regeneration",
               resetIn: result.resetIn,
-              usage: getUsageDisplay(result.subscription),
+              usage: getUsageDisplay(subscription),
             },
             { status: 429 }
           );
         }
       } else {
-        // New generation - check monthly/lifetime limit
-        const result = await recordGeneration(session.user.id, userEmail);
+        // New generation - check monthly/lifetime limit WITHOUT updating
+        const result = canGenerate(subscription);
         if (!result.allowed) {
           return NextResponse.json(
             { 
               error: result.reason,
               upgradeRequired: true,
               limitType: "generation",
-              usage: getUsageDisplay(result.subscription),
+              usage: getUsageDisplay(subscription),
             },
             { status: 429 }
           );

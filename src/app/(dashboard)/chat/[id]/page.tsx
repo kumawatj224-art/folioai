@@ -5,6 +5,8 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { ChatInterface } from "@/features/chat/components/chat-interface";
 import { LiveUrlLink } from "@/components/ui/live-url-link";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
+import { getSubscription } from "@/infrastructure/repositories/subscription-repository";
+import { PLAN_LIMITS } from "@/domain/entities/subscription";
 import type { ChatMessage } from "@/domain/entities/chat";
 
 type PageProps = {
@@ -34,6 +36,24 @@ export default async function EditChatPage({ params }: PageProps) {
   // Verify ownership
   if (portfolio.userId !== session.user.id) {
     redirect("/dashboard");
+  }
+
+  /**
+   * SERVER-SIDE PREFLIGHT GUARD — Regeneration limit (Task 2)
+   *
+   * Free-tier users get 2 total regenerations (lifetime). If they have
+   * exhausted that quota, block access to the chat edit interface and
+   * send them to the dashboard with an upgrade prompt.
+   *
+   * This prevents bypass via direct URL navigation to /chat/[id].
+   */
+  const subscription = await getSubscription(session.user.id);
+  const limits = PLAN_LIMITS[subscription.plan];
+
+  if (subscription.plan === "free") {
+    if (subscription.usage.regenerationsCount >= limits.maxRegenerations) {
+      redirect("/dashboard?upgrade=regeneration_limit");
+    }
   }
 
   // Get chat history or create initial message with context
