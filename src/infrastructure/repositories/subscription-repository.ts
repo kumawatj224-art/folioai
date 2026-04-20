@@ -23,6 +23,28 @@ const getDb = () => getSupabaseServer();
 const subscriptionCache = new Map<string, { data: UserSubscription; expiresAt: number }>();
 const CACHE_TTL = 60 * 1000; // 1 minute cache
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ADMIN BYPASS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Check if an email is an admin (bypasses all limits)
+ * Set ADMIN_EMAILS in .env.local as comma-separated emails
+ * Example: ADMIN_EMAILS=admin@example.com,me@mysite.com
+ */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
+  const isAdmin = adminEmails.includes(email.toLowerCase());
+  
+  if (isAdmin) {
+    console.log('[Subscription] Admin bypass active for:', email);
+  }
+  
+  return isAdmin;
+}
+
 /**
  * Get or create subscription for user
  */
@@ -185,14 +207,21 @@ export async function updatePlan(
 
 /**
  * Record a generation (full portfolio creation)
+ * @param userEmail - Optional email for admin bypass check
  */
-export async function recordGeneration(userId: string): Promise<{ 
+export async function recordGeneration(userId: string, userEmail?: string | null): Promise<{ 
   allowed: boolean; 
   subscription: UserSubscription;
   reason?: string;
 }> {
   let subscription = await getSubscription(userId);
   const limits = PLAN_LIMITS[subscription.plan];
+  
+  // Admin bypass - no limits
+  if (isAdminEmail(userEmail)) {
+    console.log('[Subscription] ADMIN: Bypassing generation limit for', userEmail);
+    return { allowed: true, subscription };
+  }
   
   // Check limits
   if (subscription.plan === 'free') {
@@ -239,8 +268,9 @@ export async function recordGeneration(userId: string): Promise<{
 
 /**
  * Record a regeneration (editing existing portfolio)
+ * @param userEmail - Optional email for admin bypass check
  */
-export async function recordRegeneration(userId: string): Promise<{
+export async function recordRegeneration(userId: string, userEmail?: string | null): Promise<{
   allowed: boolean;
   subscription: UserSubscription;
   reason?: string;
@@ -248,6 +278,12 @@ export async function recordRegeneration(userId: string): Promise<{
 }> {
   let subscription = await getSubscription(userId);
   const limits = PLAN_LIMITS[subscription.plan];
+  
+  // Admin bypass - no limits
+  if (isAdminEmail(userEmail)) {
+    console.log('[Subscription] ADMIN: Bypassing regeneration limit for', userEmail);
+    return { allowed: true, subscription };
+  }
   
   // Unlimited for pro/lifetime
   if (limits.regenerationsPerDay >= 999) {

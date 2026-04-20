@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-import type { ChatMessage, StudentInfo, PortfolioTemplate } from "@/domain/entities/chat";
+import type { ChatMessage, StudentInfo } from "@/domain/entities/chat";
 import { Button } from "@/components/ui/button";
 
 // Icons as components for cleaner code
@@ -16,12 +16,6 @@ const IconExpand = () => (
 const IconCollapse = () => (
   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-  </svg>
-);
-
-const IconCopy = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
   </svg>
 );
 
@@ -57,26 +51,12 @@ const EDIT_MODE_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
-const getTemplateMessage = (templateName: string): ChatMessage => ({
-  id: "initial",
-  role: "assistant",
-  content: `Hi! I'm FolioAI. You've selected the **${templateName}** template — great choice! 🎨\n\nUpload your resume and I'll fill in the template with your info. Or just tell me about yourself:\n\n• Your name and what you study\n• Key skills and projects\n• Any experience or internships\n\n💡 **Tip:** Upload your resume to auto-fill everything instantly!`,
-  timestamp: new Date(),
-});
-
-type TemplateContext = {
-  name: string;
-  slug: string;
-  htmlTemplate: string;
-};
-
 type ChatInterfaceProps = {
   portfolioId?: string;
   initialMessages?: ChatMessage[];
   initialStudentInfo?: Partial<StudentInfo>;
   initialHtml?: string | null;
   initialLiveUrl?: string | null;
-  templateContext?: TemplateContext | null;
 };
 
 export function ChatInterface({ 
@@ -85,7 +65,6 @@ export function ChatInterface({
   initialStudentInfo = {},
   initialHtml = null,
   initialLiveUrl = null,
-  templateContext = null,
 }: ChatInterfaceProps) {
   const router = useRouter();
   
@@ -94,9 +73,7 @@ export function ChatInterface({
   
   // Determine initial message based on context
   const defaultMessages = initialMessages || [
-    isEditMode 
-      ? EDIT_MODE_MESSAGE 
-      : (templateContext ? getTemplateMessage(templateContext.name) : INITIAL_MESSAGE)
+    isEditMode ? EDIT_MODE_MESSAGE : INITIAL_MESSAGE
   ];
   
   const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
@@ -108,9 +85,6 @@ export function ChatInterface({
   const [deployedUrl, setDeployedUrl] = useState<string | null>(initialLiveUrl);
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(initialHtml);
   const [currentPortfolioHtml, setCurrentPortfolioHtml] = useState<string | null>(initialHtml); // Tracks latest HTML for AI context
-  const [selectedTemplate, setSelectedTemplate] = useState<PortfolioTemplate>(
-    templateContext?.slug as PortfolioTemplate || "minimal-dark"
-  );
   const [readyToGenerate, setReadyToGenerate] = useState(isEditMode); // Always ready in edit mode
   const [hasChanges, setHasChanges] = useState(false); // Track if user made changes in edit mode
   const [isUploadingResume, setIsUploadingResume] = useState(false);
@@ -118,7 +92,6 @@ export function ChatInterface({
   
   // Preview panel state
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -131,18 +104,6 @@ export function ChatInterface({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  // Copy HTML to clipboard
-  const copyHtml = useCallback(async () => {
-    if (!generatedHtml) return;
-    try {
-      await navigator.clipboard.writeText(generatedHtml);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch {
-      setError("Failed to copy to clipboard");
-    }
-  }, [generatedHtml]);
 
   // Download HTML file
   const downloadHtml = useCallback(() => {
@@ -183,10 +144,6 @@ export function ChatInterface({
           studentInfo,
           action: "chat",
           existingHtml: currentPortfolioHtml, // Pass current portfolio HTML for AI context
-          templateContext: templateContext ? {
-            name: templateContext.name,
-            slug: templateContext.slug,
-          } : null,
         }),
       });
 
@@ -232,13 +189,7 @@ export function ChatInterface({
           messages,
           studentInfo,
           action: "generate",
-          template: selectedTemplate,
           existingHtml: currentPortfolioHtml, // Pass existing HTML for context when regenerating
-          templateContext: templateContext ? {
-            name: templateContext.name,
-            slug: templateContext.slug,
-            htmlTemplate: templateContext.htmlTemplate,
-          } : null,
         }),
       });
 
@@ -251,6 +202,11 @@ export function ChatInterface({
       setGeneratedHtml(data.html);
       setCurrentPortfolioHtml(data.html); // Update context for future regenerations
       setHasChanges(false); // Reset after regenerating
+      
+      // Clear deployed URL if HTML changed - user needs to redeploy
+      if (deployedUrl && data.html !== initialHtml) {
+        setDeployedUrl(null);
+      }
       
       // Refresh server components (UsageBanner) to show updated counts
       router.refresh();
@@ -520,22 +476,6 @@ export function ChatInterface({
     }
   };
 
-  const templates: { id: PortfolioTemplate; name: string; description: string }[] = [
-    // CREATIVE TEMPLATES - recommended
-    { id: "game-hud", name: "🎮 Game HUD", description: "XP bars, achievements, pixel art" },
-    { id: "ios-app", name: "📱 iOS App", description: "iPhone home screen, app icons" },
-    { id: "space-galaxy", name: "🌌 Space Galaxy", description: "Planets, constellations, orbit" },
-    { id: "retro-vhs", name: "📼 Retro VHS", description: "80s neon, scanlines, glitch" },
-    { id: "spotify-player", name: "🎵 Spotify", description: "Music player, playlists" },
-    { id: "dashboard-analytics", name: "📊 Dashboard", description: "Analytics, charts, metrics" },
-    { id: "newspaper-frontpage", name: "📰 Newspaper", description: "Headlines, columns, editorial" },
-    { id: "bento-grid", name: "🧱 Bento Grid", description: "Modern card layout" },
-    // CLASSIC TEMPLATES
-    { id: "terminal-dark", name: "💻 Terminal", description: "Hacker aesthetic, green" },
-    { id: "gradient-dark", name: "🌈 Gradient", description: "Purple/blue, glassmorphism" },
-    { id: "brutalist", name: "⬛ Brutalist", description: "Bold black/white/orange" },
-  ];
-
   return (
     <div className={`flex h-[calc(100vh-140px)] gap-4 transition-all duration-300 ${isPreviewExpanded ? "gap-0" : ""}`}>
       {/* Chat Panel - Hide when preview is expanded */}
@@ -561,24 +501,17 @@ export function ChatInterface({
               </Button>
             )}
             
-            {/* Edit mode: Show Regenerate when user made changes */}
-            {isEditMode && hasChanges && (
-              <Button size="sm" variant="secondary" onClick={generatePortfolio} disabled={isLoading}>
-                {isLoading ? "Regenerating..." : "Regenerate"}
-              </Button>
-            )}
-            
             {/* Show Save when there's generated HTML (new or regenerated) */}
             {generatedHtml && !deployedUrl && (
               <Button size="sm" variant="secondary" onClick={savePortfolio} disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save Draft"}
+                {isLoading ? "Saving..." : isEditMode ? "Save Changes" : "Save Draft"}
               </Button>
             )}
             
             {/* Show Deploy button when there's generated HTML */}
             {generatedHtml && !deployedUrl && (
               <Button size="sm" onClick={deployPortfolio} disabled={isDeploying || isLoading}>
-                {isDeploying ? "Deploying..." : "🚀 Deploy"}
+                {isDeploying ? "Deploying..." : isEditMode ? "🚀 Update Live" : "🚀 Deploy"}
               </Button>
             )}
             
@@ -798,54 +731,16 @@ export function ChatInterface({
           </div>
 
           <div className="flex items-center gap-1">
-            {/* Template Selector - compact dropdown */}
-            {!templateContext && (!generatedHtml || hasChanges) && (
-              <select
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value as PortfolioTemplate)}
-                aria-label="Select template"
-                className="mr-2 rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-2 py-1.5 text-xs text-[#a0a0a0] focus:border-white/[0.15] focus:outline-none"
-              >
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
             {/* Action buttons - visible when HTML exists */}
             {generatedHtml && (
-              <>
-                {/* Regenerate */}
-                <button
-                  onClick={generatePortfolio}
-                  disabled={isLoading}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[#a0a0a0] transition-colors hover:bg-white/[0.05] hover:text-[#f0ece4] disabled:opacity-50"
-                  title="Regenerate"
-                >
-                  <IconRefresh />
-                </button>
-                
-                {/* Copy */}
-                <button
-                  onClick={copyHtml}
-                  className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[#a0a0a0] transition-colors hover:bg-white/[0.05] hover:text-[#f0ece4]"
-                  title="Copy HTML"
-                >
-                  <IconCopy />
-                  <span className="text-xs">{isCopied ? "Copied!" : "Copy"}</span>
-                </button>
-                
-                {/* Download */}
-                <button
-                  onClick={downloadHtml}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[#a0a0a0] transition-colors hover:bg-white/[0.05] hover:text-[#f0ece4]"
-                  title="Download HTML"
-                >
-                  <IconDownload />
-                </button>
-              </>
+              <button
+                onClick={downloadHtml}
+                className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[#a0a0a0] transition-colors hover:bg-white/[0.05] hover:text-[#f0ece4]"
+                title="Download HTML"
+              >
+                <IconDownload />
+                <span className="text-xs">Download</span>
+              </button>
             )}
 
             <div className="mx-1 h-4 w-px bg-white/[0.08]" />
@@ -860,15 +755,6 @@ export function ChatInterface({
             </button>
           </div>
         </div>
-
-        {/* Template info banner */}
-        {templateContext && (
-          <div className="border-b border-white/[0.08] bg-[#ff6b35]/10 px-4 py-2">
-            <p className="text-xs text-[#ff6b35]">
-              Using template: <span className="font-medium">{templateContext.name}</span>
-            </p>
-          </div>
-        )}
 
         {/* Preview Content */}
         <div className="flex-1 overflow-hidden p-3 relative">
