@@ -13,11 +13,15 @@ export const metadata: Metadata = {
 
 export default async function PricingPage() {
   const session = await getCurrentSession();
+  const freePlan = PLAN_LIMITS.free;
+  const starterPlan = PLAN_LIMITS.starter;
+  const proPlan = PLAN_LIMITS.pro;
+  const lifetimePlan = PLAN_LIMITS.lifetime;
   
   // Get current plan if logged in
   let currentPlan: PlanType = 'free';
   if (session?.user?.id) {
-    const subscription = await getSubscription(session.user.id);
+    const subscription = await getSubscription(session.user.id, session.user.email);
     currentPlan = subscription.plan;
   }
   
@@ -69,17 +73,18 @@ export default async function PricingPage() {
             plan="free"
             name="Free"
             description="Try before you buy"
-            price={0}
+            price={freePlan.priceMonthly}
             period="forever"
             features={[
-              "3 portfolio generations (lifetime)",
-              "2 regenerations/day",
-              "3 basic templates",
+              `${freePlan.maxNewGenerations} new portfolio generation${freePlan.maxNewGenerations > 1 ? 's' : ''} (lifetime)`,
+              `${freePlan.maxRegenerations} portfolio regenerations (lifetime)`,
+              "3 starter templates",
+              "1 portfolio slot",
               "Export HTML",
               "FolioAI branding",
             ]}
             limitations={[
-              "No custom subdomain",
+              "No FolioAI subdomain",
               "No analytics",
             ]}
             currentPlan={currentPlan}
@@ -91,18 +96,20 @@ export default async function PricingPage() {
             plan="starter"
             name="Starter"
             description="For active job hunters"
-            price={99}
-            yearlyPrice={799}
+            price={starterPlan.priceMonthly}
+            yearlyPrice={starterPlan.priceYearly}
             period="/month"
             features={[
-              "5 generations/month",
-              "10 regenerations/day",
+              `${starterPlan.generationsPerMonth} new generations/month`,
+              `${starterPlan.regenerationsPerDay} regenerations/day`,
               "All 7 templates",
-              "Custom subdomain",
+              "Hosted FolioAI portfolio URL",
               "Basic analytics",
               "Unlimited resume parsing",
+              "1 portfolio slot",
             ]}
             limitations={[
+              "No custom FolioAI subdomain",
               "Smaller branding",
             ]}
             currentPlan={currentPlan}
@@ -114,20 +121,20 @@ export default async function PricingPage() {
             plan="pro"
             name="Pro"
             description="For serious job seekers"
-            price={199}
-            yearlyPrice={1499}
+            price={proPlan.priceMonthly}
+            yearlyPrice={proPlan.priceYearly}
             period="/month"
             popular
             features={[
-              "15 generations/month",
+              `${proPlan.generationsPerMonth} new generations/month`,
               "Unlimited regenerations",
               "All templates + Premium",
-              "Custom domain (BYOD)",
-              "Full analytics dashboard",
+              "Custom FolioAI subdomain",
+              "Advanced analytics dashboard",
               "No FolioAI branding",
               "GitHub auto-sync",
               "Priority support",
-              "Up to 3 portfolios",
+              `Up to ${proPlan.maxPortfolios} portfolios`,
             ]}
             currentPlan={currentPlan}
             isLoggedIn={!!session?.user}
@@ -138,14 +145,15 @@ export default async function PricingPage() {
             plan="lifetime"
             name="Lifetime"
             description="Early supporter deal"
-            price={4999}
+            price={lifetimePlan.priceLifetime ?? 0}
             period="one-time"
             badge="First 100 users"
             features={[
               "Everything in Pro",
-              "10 generations/month",
+              `${lifetimePlan.generationsPerMonth} new generations/month`,
+              "Unlimited regenerations",
               "Forever access",
-              "Custom domain (BYOD)",
+              "Custom FolioAI subdomain",
               "Early access to features",
               'Founder badge',
             ]}
@@ -162,23 +170,23 @@ export default async function PricingPage() {
           <div className="mx-auto grid max-w-3xl gap-4">
             <FaqItem
               question="What's a generation vs regeneration?"
-              answer="A generation creates a new portfolio from scratch. A regeneration edits or updates an existing portfolio. Free tier has 3 lifetime generations and 2 daily regenerations."
+              answer="A generation creates a new portfolio from scratch. A regeneration edits or updates an existing portfolio. Free tier includes 1 new generation and 2 regenerations total for that portfolio, both as lifetime limits."
             />
             <FaqItem
-              question="What does BYOD (Bring Your Own Domain) mean?"
-              answer="You purchase a domain from any registrar (like GoDaddy, Namecheap) for ~₹500-800/year. We handle the DNS configuration and SSL certificate - no extra cost from us."
+              question="What kind of live URL do I get?"
+              answer="Free and Starter deploy to a FolioAI-hosted URL. Pro and Lifetime can choose a custom FolioAI subdomain such as yourname.getfolioai.in."
             />
             <FaqItem
               question="Can I upgrade or downgrade anytime?"
               answer="Yes! Upgrade anytime and your plan starts immediately. Downgrade at the end of your billing period."
             />
             <FaqItem
-              question="Is there a student discount?"
-              answer="Yes! Students with .edu.in email or GitHub Student Pack get 50% off Starter and Pro plans."
+              question="Do you offer student pricing?"
+              answer="The plans are already priced for students and early-career engineers. If we run promo pricing or launch offers, they will show up directly in the product."
             />
             <FaqItem
               question="What happens when I reach my limit?"
-              answer="You'll see a friendly modal suggesting an upgrade. You can wait for the reset (daily for regenerations, monthly for generations) or upgrade for more."
+              answer="You'll see an upgrade prompt when you hit your plan limit. Paid plan generations reset monthly, paid regenerations reset daily, and free plan lifetime limits do not reset."
             />
           </div>
         </div>

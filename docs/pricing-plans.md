@@ -12,14 +12,14 @@ Indian engineering students (budget-conscious, value-driven)
 
 | Feature | Limit |
 |---------|-------|
-| Portfolio generations | 3 total (lifetime) |
-| Regenerations | 2/day |
-| Templates | 3 basic templates |
+| New portfolio generations | 1 total (lifetime) |
+| Regenerations | 2 total (lifetime) |
+| Templates | 3 starter templates |
 | Subdomain | ❌ No |
 | Custom domain | ❌ No |
-| Portfolio URL | `folioai.in/p/{random-id}` |
+| Portfolio URL | Auto-generated FolioAI URL |
 | Analytics | ❌ No |
-| Resume parsing | 1 upload |
+| Resume parsing | Included |
 | FolioAI branding | ✅ "Made with FolioAI" footer |
 | Export HTML | ✅ Yes |
 
@@ -32,15 +32,16 @@ Indian engineering students (budget-conscious, value-driven)
 
 | Feature | Limit |
 |---------|-------|
-| Portfolio generations | 5/month |
+| New portfolio generations | 5/month |
 | Regenerations | 10/day |
 | Templates | All 7 templates |
-| Subdomain | ✅ `username.folioai.in` |
+| Subdomain | Auto-generated FolioAI URL |
 | Custom domain | ❌ No |
 | Analytics | Basic (views, clicks) |
 | Resume parsing | Unlimited |
 | FolioAI branding | Smaller footer |
 | Export HTML | ✅ Yes |
+| Portfolio slots | 1 |
 | Priority support | ❌ No |
 
 **Best for:** Students actively job hunting
@@ -52,11 +53,11 @@ Indian engineering students (budget-conscious, value-driven)
 
 | Feature | Limit |
 |---------|-------|
-| Portfolio generations | 15/month |
+| New portfolio generations | 15/month |
 | Regenerations | Unlimited |
 | Templates | All templates + Premium |
-| Subdomain | ✅ `username.folioai.in` |
-| Custom domain | ✅ 1 domain (BYOD - Bring Your Own) |
+| Subdomain | ✅ Custom FolioAI subdomain |
+| Custom domain | ❌ Not included |
 | Analytics | Full (views, clicks, geography, referrers) |
 | Resume parsing | Unlimited |
 | FolioAI branding | ❌ Removed |
@@ -67,8 +68,6 @@ Indian engineering students (budget-conscious, value-driven)
 
 **Best for:** Serious job seekers, freelancers
 
-**Note on Custom Domains:** User purchases their own domain from any registrar (GoDaddy, Namecheap, etc.). We handle DNS verification and SSL (free via Let's Encrypt). Our cost: ₹0.
-
 ---
 
 ### 💎 LIFETIME DEAL (Limited - First 100 Users)
@@ -77,8 +76,10 @@ Indian engineering students (budget-conscious, value-driven)
 | Feature | Limit |
 |---------|-------|
 | Everything in PRO | ✅ Forever |
-| Portfolio generations | 10/month (120/year) |
-| Custom domain | ✅ 1 domain (BYOD) |
+| New portfolio generations | 10/month (120/year) |
+| Regenerations | Unlimited |
+| Custom FolioAI subdomain | ✅ Included |
+| Custom domain | ❌ Not included |
 | Multiple portfolios | Up to 3 |
 | Early access to new features | ✅ Yes |
 | Founder badge | ✅ "Early Supporter" |
@@ -95,19 +96,14 @@ Indian engineering students (budget-conscious, value-driven)
 ## Feature Breakdown
 
 ### Subdomain System
-- Free: `folioai.in/p/abc123xyz`
-- Starter+: `arjun-sharma.folioai.in`
-- Pro/Lifetime: `arjunsharma.com` (BYOD - user buys domain, we configure)
+- Free: auto-generated FolioAI URL
+- Starter: auto-generated FolioAI URL (`aixxxxxx.getfolioai.in` style)
+- Pro/Lifetime: human-readable FolioAI subdomain (`yourname.getfolioai.in`)
 
-### Custom Domain (BYOD) Flow
-1. User purchases domain from any registrar (~₹500-800/year)
-2. User adds domain in FolioAI dashboard
-3. We provide DNS records (CNAME/A record)
-4. User configures DNS at their registrar
-5. We auto-provision SSL via Let's Encrypt
-6. Portfolio live at custom domain!
-
-**Our cost per custom domain: ₹0** (SSL is free, DNS verification is automated)
+### Custom URL Rules
+1. Free and Starter get an auto-generated FolioAI URL.
+2. Pro and Lifetime can choose a custom FolioAI subdomain.
+3. External custom domains are not part of the current product scope.
 
 ### Templates by Plan
 
@@ -413,15 +409,8 @@ const PLAN_LIMITS: Record<string, PlanLimits> = {
 
 ## Student Discounts
 
-### Verification Methods
-1. `.edu.in` email verification
-2. Student ID upload
-3. GitHub Student Pack verification
-
-### Student Pricing
-- Starter: ₹49/month (50% off)
-- Pro: ₹99/month (50% off)
-- Lifetime: ₹1,999
+Student-targeted pricing is already reflected in the base plans above.
+If promotional offers or launch discounts are introduced, they should be documented separately from the default pricing model.
 
 ---
 

@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { ChatInterface } from "@/features/chat/components/chat-interface";
+import { getSubscription } from "@/infrastructure/repositories/subscription-repository";
+import { canGenerate } from "@/domain/entities/subscription";
 
 export const metadata = {
   title: "Create Portfolio | FolioAI",
@@ -15,14 +18,32 @@ export default async function NewChatPage() {
     redirect("/");
   }
 
+  /**
+   * SERVER-SIDE PREFLIGHT GUARD (Task 2)
+   *
+   * Before rendering the chat interface, check if the user has consumed
+   * their new-portfolio generation quota. If they have, redirect them
+   * to the dashboard with a flag so the upgrade modal can be triggered.
+   *
+   * This prevents users from bypassing the UI restriction by navigating
+   * directly to /chat/new.
+   */
+  const subscription = await getSubscription(session.user.id, session.user.email);
+  const generationAccess = canGenerate(subscription);
+
+  if (!generationAccess.allowed) {
+    redirect("/dashboard?upgrade=new_generation_limit");
+  }
+  // Paid plans are checked server-side at the API layer; the UI is always accessible.
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <header className="border-b border-white/[0.08] bg-[#111111] px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-[#a0a0a0] hover:text-[#f0ece4] transition-colors">
+            <Link href="/dashboard" className="text-[#a0a0a0] hover:text-[#f0ece4] transition-colors">
               ← Back to Dashboard
-            </a>
+            </Link>
             <span className="text-[#606060]">|</span>
             <h1 className="font-display font-semibold text-[#f0ece4]">
               New Portfolio

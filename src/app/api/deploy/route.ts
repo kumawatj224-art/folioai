@@ -3,17 +3,39 @@ import type { NextRequest } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
+import { getSubscription } from "@/infrastructure/repositories/subscription-repository";
+import { supportsCustomSubdomainForSubscription } from "@/domain/entities/subscription";
 
 type DeployRequestBody = {
   portfolioId: string;
 };
 
 /**
+ * Sanitize a string into a valid DNS subdomain label.
+ * - Lowercase, alphanumeric + hyphens only
+ * - No leading/trailing hyphens
+ * - Max 63 characters (DNS label limit)
+ */
+function toDnsLabel(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+}
+
+/**
  * POST /api/deploy
  * Deploys a portfolio by updating its status to "deployed"
- * 
+ *
  * The portfolio is served from our database via subdomain routing.
  * No external Vercel API needed.
+ *
+ * DOMAIN LOGIC (Task 3):
+ *   - Active subscribers (paid plans): may use a custom slug (from portfolio title).
+ *   - Free-tier users: domain is ALWAYS forced to <uid>.getfolioai.in
+ *     (hyphens stripped from UUID for DNS compliance).
+ *     Any custom slug input is ignored.
  */
 export async function POST(request: NextRequest) {
   const session = await getCurrentSession();
@@ -42,25 +64,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Generate slug if not present
-    let slug = portfolio.slug;
-    if (!slug) {
-      // Generate from title: "Jai Kumar's Portfolio" -> "jai-kumar"
+    // ── Domain Naming Logic ──────────────────────────────────────────
+    const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
+    const subscription = await getSubscription(session.user.id, session.user.email);
+    const canUseCustomSubdomain = supportsCustomSubdomainForSubscription(subscription);
+
+    let slug: string;
+
+    if (canUseCustomSubdomain) {
+      // Paid users: derive slug from portfolio title (custom / human-readable)
       const name = portfolio.title.replace(/'s Portfolio$/i, "").trim();
-      slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .slice(0, 30);
-      
-      // Ensure uniqueness by appending random suffix if needed
-      if (!slug) {
-        slug = `portfolio-${Date.now().toString(36)}`;
-      }
+      slug = toDnsLabel(name) || toDnsLabel(`portfolio-${Date.now().toString(36)}`);
+      // Ensure we have a valid slug fallback
+      if (!slug) slug = `portfolio-${Date.now().toString(36)}`;
+    } else {
+      /**
+       * Free users: force portfolio-based subdomain.
+       * Format: ai[first 6 chars of portfolio_id].[domain]
+       */
+      const portfolioIdPrefix = portfolioId.replace(/-/g, "").slice(0, 6);
+      slug = `ai${portfolioIdPrefix}`;
     }
 
-    // Update to deployed status with live URL
-    const liveUrl = `https://${slug}.getfolioai.in`;
+    const liveUrl = `https://${slug}.${ROOT_DOMAIN}`;
+    // ──────────────────────────────────────────────────────────────────────────
 
     const updated = await chatPortfolioRepository.update(portfolioId, {
       status: "deployed",

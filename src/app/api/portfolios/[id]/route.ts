@@ -3,6 +3,23 @@ import type { NextRequest } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/session";
 import { chatPortfolioRepository, type UpdatePortfolioInput } from "@/infrastructure/repositories/portfolio-repository";
+import { getSubscription, recordRegeneration } from "@/infrastructure/repositories/subscription-repository";
+import { supportsCustomSubdomainForSubscription } from "@/domain/entities/subscription";
+import { validatePortfolioHtml } from "@/lib/utils/portfolio-html";
+
+/**
+ * Sanitize a string into a valid DNS subdomain label.
+ * - Lowercase, alphanumeric + hyphens only
+ * - No leading/trailing hyphens
+ * - Max 63 chars (DNS label limit)
+ */
+function toDnsLabel(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+}
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -60,6 +77,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const { title, htmlContent, liveUrl, status, chatHistory, customSubdomain } = body;
 
+    const htmlValidation = htmlContent !== undefined
+      ? validatePortfolioHtml(String(htmlContent))
+      : null;
+
+    if (htmlValidation && htmlValidation.violations.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Generated portfolio HTML contains product/editor UI and must be regenerated.",
+          details: htmlValidation.violations,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Record the usage AFTER verifying user/payload to consume 1 regeneration limit
+    // We only deduct if they actually changed content/deployed, not just normal viewing
+    if (htmlContent || chatHistory) {
+      const usageResult = await recordRegeneration(session.user.id, session.user.email);
+      if (!usageResult.allowed) {
+        return NextResponse.json({ error: usageResult.reason }, { status: 429 });
+      }
+    }
+
     // Handle liveUrl update separately (also sets status to deployed)
     if (liveUrl !== undefined) {
       const result = await chatPortfolioRepository.setLiveUrl(id, liveUrl);
@@ -69,37 +109,41 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Update fields if provided
     const updates: UpdatePortfolioInput = {};
     if (title !== undefined) updates.title = title;
-    if (htmlContent !== undefined) updates.htmlContent = htmlContent;
+    if (htmlValidation) updates.htmlContent = htmlValidation.sanitizedHtml;
     if (status !== undefined) updates.status = status;
     if (chatHistory !== undefined) updates.chatHistory = chatHistory;
 
-    // If deploying, use custom subdomain or generate from title
+    // If deploying, resolve the slug based on subscription tier
     if (status === "deployed") {
+      // ── Domain Naming Logic ───────────────────────────────────────
+      const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
+      const subscription = await getSubscription(session.user.id, session.user.email);
+      const canUseCustomSubdomain = supportsCustomSubdomainForSubscription(subscription);
+
       let slug: string;
-      
-      if (customSubdomain) {
-        // Use user-provided subdomain
-        slug = customSubdomain
-          .toLowerCase()
-          .replace(/[^a-z0-9-]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 30);
+
+      if (canUseCustomSubdomain) {
+        // Paid users: allow custom subdomain input or derive from portfolio title
+        if (customSubdomain) {
+          slug = toDnsLabel(customSubdomain);
+        } else {
+          const name = portfolio.title.replace(/'s Portfolio$/i, "").trim();
+          slug = toDnsLabel(name);
+        }
+        if (!slug || slug === "my-portfolio") {
+          slug = `portfolio-${Date.now().toString(36)}`;
+        }
       } else {
-        // Fallback: generate from portfolio title
-        const portfolioTitle = portfolio.title;
-        const name = portfolioTitle.replace(/'s Portfolio$/i, "").trim();
-        slug = name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 30);
+        /**
+         * FREE TIER DOMAIN ENFORCEMENT
+         * Format: ai[first 6 chars of portfolio_id].[domain]
+         */
+        const portfolioIdPrefix = id.replace(/-/g, "").slice(0, 6);
+        slug = `ai${portfolioIdPrefix}`;
       }
-      
-      if (!slug || slug === "my-portfolio") {
-        slug = `portfolio-${Date.now().toString(36)}`;
-      }
-      
-      updates.liveUrl = `https://${slug}.getfolioai.in`;
+      // ───────────────────────────────────────────────────────────────────────
+
+      updates.liveUrl = `https://${slug}.${ROOT_DOMAIN}`;
     }
 
     const result = await chatPortfolioRepository.update(id, updates);

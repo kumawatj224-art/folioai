@@ -15,8 +15,10 @@ export type PlanLimits = {
   plan: PlanType;
   
   // Generation limits
-  generationsPerMonth: number;  // -1 = based on lifetime total for free
-  regenerationsPerDay: number;  // 999 = unlimited
+  generationsPerMonth: number;    // For paid plans (monthly, -1 = use free-tier split logic)
+  maxNewGenerations: number;      // Free tier only: max brand-new portfolios (1)
+  maxRegenerations: number;       // Free tier only: max lifetime regenerations (2)
+  regenerationsPerDay: number;    // Paid plans: 999 = unlimited
   
   // Features
   hasSubdomain: boolean;
@@ -45,12 +47,25 @@ export type PlanLimits = {
  * User's current usage
  */
 export type UserUsage = {
-  // Generation tracking
+  // Paid plan generation tracking (monthly)
   generationsUsedThisMonth: number;
-  generationsUsedTotal: number;      // For free tier lifetime limit
   monthResetDate: Date;
+
+  /**
+   * FREE TIER SPLIT TRACKING
+   * The free plan has two separate lifetime counters:
+   *   - new_generations_count:  how many brand-new portfolios created (max 1)
+   *   - regenerations_count:    how many times the existing portfolio was regenerated (max 2)
+   *
+   * These replace the old single "generationsUsedTotal" (which was 3 combined).
+   */
+  newGenerationsCount: number;   // DB: new_generations_count
+  regenerationsCount: number;    // DB: regenerations_count
   
-  // Regeneration tracking
+  // Legacy field — kept for backward compatibility, mirrors newGenerationsCount + regenerationsCount
+  generationsUsedTotal: number;
+
+  // Paid plan regeneration tracking (daily)
   regenerationsUsedToday: number;
   dayResetDate: Date;
   
@@ -65,6 +80,7 @@ export type UserSubscription = {
   id: string;
   userId: string;
   plan: PlanType;
+  isAdmin?: boolean;
   status: SubscriptionStatus;
   
   // Usage
@@ -112,10 +128,18 @@ export type UsageDisplay = {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
+  /**
+   * FREE TIER SPLIT LIMITS:
+   * - 1 new portfolio generation  (new_generations_count, lifetime)
+   * - 2 regenerations of that portfolio (regenerations_count, lifetime)
+   * Both are lifetime counters — they do NOT reset.
+   */
   free: {
     plan: 'free',
-    generationsPerMonth: 3,  // Actually lifetime total
-    regenerationsPerDay: 2,
+    generationsPerMonth: -1,   // Unused for free — use maxNewGenerations instead
+    maxNewGenerations: 1,      // 1 brand-new portfolio creation (lifetime)
+    maxRegenerations: 2,       // 2 regenerations of that portfolio (lifetime)
+    regenerationsPerDay: 999,  // Free plan does NOT use daily regen; uses lifetime maxRegenerations
     hasSubdomain: false,
     maxCustomDomains: 0,
     maxPortfolios: 1,
@@ -132,6 +156,8 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   starter: {
     plan: 'starter',
     generationsPerMonth: 5,
+    maxNewGenerations: 999,    // Unlimited for paid plans
+    maxRegenerations: 999,     // Unlimited for paid plans
     regenerationsPerDay: 10,
     hasSubdomain: true,
     maxCustomDomains: 0,
@@ -149,9 +175,11 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   pro: {
     plan: 'pro',
     generationsPerMonth: 15,
+    maxNewGenerations: 999,    // Unlimited for paid plans
+    maxRegenerations: 999,     // Unlimited for paid plans
     regenerationsPerDay: 999,  // Unlimited
     hasSubdomain: true,
-    maxCustomDomains: 1,  // BYOD - user brings their own domain
+    maxCustomDomains: 1,       // BYOD - user brings their own domain
     maxPortfolios: 3,
     hasBasicAnalytics: true,
     hasAdvancedAnalytics: true,
@@ -165,10 +193,12 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   
   lifetime: {
     plan: 'lifetime',
-    generationsPerMonth: 10,  // Capped for sustainability (120/year max)
+    generationsPerMonth: 10,   // Capped for sustainability (120/year max)
+    maxNewGenerations: 999,    // Unlimited for paid plans
+    maxRegenerations: 999,     // Unlimited for paid plans
     regenerationsPerDay: 999,
     hasSubdomain: true,
-    maxCustomDomains: 1,  // BYOD - user brings their own domain
+    maxCustomDomains: 1,       // BYOD - user brings their own domain
     maxPortfolios: 3,
     hasBasicAnalytics: true,
     hasAdvancedAnalytics: true,
@@ -178,8 +208,28 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     hasGithubSync: true,
     priceMonthly: 0,
     priceYearly: 0,
-    priceLifetime: 4999,  // Sustainable: break-even ~2 years of Pro
+    priceLifetime: 4999,       // Sustainable: break-even ~2 years of Pro
   },
+};
+
+const ADMIN_PLAN_LIMITS: PlanLimits = {
+  plan: 'lifetime',
+  generationsPerMonth: 999999,
+  maxNewGenerations: 999999,
+  maxRegenerations: 999999,
+  regenerationsPerDay: 999999,
+  hasSubdomain: true,
+  maxCustomDomains: 999999,
+  maxPortfolios: 999999,
+  hasBasicAnalytics: true,
+  hasAdvancedAnalytics: true,
+  showBranding: false,
+  brandingSize: 'none',
+  hasPrioritySupport: true,
+  hasGithubSync: true,
+  priceMonthly: 0,
+  priceYearly: 0,
+  priceLifetime: 0,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -200,33 +250,59 @@ export function getPlanLimits(plan: PlanType): PlanLimits {
   return PLAN_LIMITS[plan];
 }
 
+export function getEffectivePlanLimits(subscription: UserSubscription): PlanLimits {
+  return subscription.isAdmin ? ADMIN_PLAN_LIMITS : PLAN_LIMITS[subscription.plan];
+}
+
+export function getEffectivePlanLabel(subscription: UserSubscription): string {
+  return subscription.isAdmin ? 'Admin' : getPlanLabel(subscription.plan);
+}
+
+export function supportsCustomSubdomain(plan: PlanType): boolean {
+  return PLAN_LIMITS[plan].maxCustomDomains > 0;
+}
+
+export function supportsCustomSubdomainForSubscription(subscription: UserSubscription): boolean {
+  return getEffectivePlanLimits(subscription).maxCustomDomains > 0;
+}
+
 export function canCreatePortfolio(subscription: UserSubscription): { allowed: boolean; reason?: string } {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   
   if (subscription.usage.portfolioCount >= limits.maxPortfolios) {
     return { 
       allowed: false, 
-      reason: `You've reached the maximum of ${limits.maxPortfolios} portfolio${limits.maxPortfolios > 1 ? 's' : ''} on the ${getPlanLabel(subscription.plan)} plan.` 
+      reason: `You've reached the maximum of ${limits.maxPortfolios} portfolio${limits.maxPortfolios > 1 ? 's' : ''} on the ${getEffectivePlanLabel(subscription)} plan.` 
     };
   }
   
   return { allowed: true };
 }
 
+/**
+ * Check if user can create a brand-new portfolio.
+ *
+ * Free tier:  limited to 1 new generation (lifetime, no reset).
+ * Paid plans: limited by generationsPerMonth (monthly reset).
+ */
 export function canGenerate(subscription: UserSubscription): { allowed: boolean; reason?: string } {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   const usage = subscription.usage;
+
+  if (subscription.isAdmin) {
+    return { allowed: true };
+  }
   
-  // Free plan uses lifetime total
   if (subscription.plan === 'free') {
-    if (usage.generationsUsedTotal >= limits.generationsPerMonth) {
+    // Free tier: check new_generations_count (max 1, lifetime)
+    if (usage.newGenerationsCount >= limits.maxNewGenerations) {
       return { 
         allowed: false, 
-        reason: `You've used all ${limits.generationsPerMonth} free generations. Upgrade to continue!` 
+        reason: `You've used your 1 free portfolio generation. Upgrade to create more!` 
       };
     }
   } else {
-    // Paid plans use monthly
+    // Paid plans: check monthly usage
     if (usage.generationsUsedThisMonth >= limits.generationsPerMonth) {
       return { 
         allowed: false, 
@@ -238,16 +314,37 @@ export function canGenerate(subscription: UserSubscription): { allowed: boolean;
   return { allowed: true };
 }
 
+/**
+ * Check if user can regenerate (edit/refresh) their existing portfolio.
+ *
+ * Free tier:  limited to 2 regenerations TOTAL (lifetime, no reset).
+ * Paid plans: limited by regenerationsPerDay (daily reset; 999 = unlimited).
+ */
 export function canRegenerate(subscription: UserSubscription): { allowed: boolean; reason?: string; resetIn?: string } {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   const usage = subscription.usage;
+
+  if (subscription.isAdmin) {
+    return { allowed: true };
+  }
   
-  // Unlimited for pro/lifetime
+  if (subscription.plan === 'free') {
+    // Free tier: check lifetime regenerations_count (max 2, never resets)
+    if (usage.regenerationsCount >= limits.maxRegenerations) {
+      return { 
+        allowed: false, 
+        reason: `You've used all 2 free regenerations. Upgrade to unlock unlimited regenerations!`,
+      };
+    }
+    return { allowed: true };
+  }
+  
+  // Paid plans: unlimited if regenerationsPerDay >= 999
   if (limits.regenerationsPerDay >= 999) {
     return { allowed: true };
   }
   
-  // Check daily limit
+  // Paid plans: check daily limit
   if (usage.regenerationsUsedToday >= limits.regenerationsPerDay) {
     const resetIn = formatTimeUntil(usage.dayResetDate);
     return { 
@@ -261,43 +358,75 @@ export function canRegenerate(subscription: UserSubscription): { allowed: boolea
 }
 
 export function getUsageDisplay(subscription: UserSubscription): UsageDisplay {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   const usage = subscription.usage;
+
+  if (subscription.isAdmin) {
+    return {
+      plan: subscription.plan,
+      planLabel: 'Admin',
+      generationsRemaining: 999999,
+      generationsLimit: 999999,
+      generationsLabel: 'unlimited',
+      regenerationsRemaining: 999999,
+      regenerationsLimit: 999999,
+      regenerationsLabel: 'unlimited',
+      canUpgrade: false,
+    };
+  }
   
-  // Calculate generations
+  // ── Generations display ──
   let generationsRemaining: number;
   let generationsLimit: number;
   let generationsLabel: string;
   
   if (subscription.plan === 'free') {
-    generationsRemaining = Math.max(0, limits.generationsPerMonth - usage.generationsUsedTotal);
-    generationsLimit = limits.generationsPerMonth;
-    generationsLabel = `${generationsRemaining}/${generationsLimit} generations left`;
+    // Free tier: show new_generations_count against maxNewGenerations (1)
+    generationsRemaining = Math.max(0, limits.maxNewGenerations - usage.newGenerationsCount);
+    generationsLimit = limits.maxNewGenerations;
+    generationsLabel = generationsRemaining > 0
+      ? `${generationsRemaining} new portfolio left`
+      : `0 new portfolios left`;
   } else {
     generationsRemaining = Math.max(0, limits.generationsPerMonth - usage.generationsUsedThisMonth);
     generationsLimit = limits.generationsPerMonth;
     generationsLabel = `${generationsRemaining}/${generationsLimit} this month`;
   }
   
-  // Calculate regenerations
-  const isUnlimited = limits.regenerationsPerDay >= 999;
-  const regenerationsRemaining = isUnlimited ? 999 : Math.max(0, limits.regenerationsPerDay - usage.regenerationsUsedToday);
-  const regenerationsLimit = limits.regenerationsPerDay;
-  const regenerationsLabel = isUnlimited ? 'unlimited' : `${regenerationsRemaining}/${regenerationsLimit} today`;
+  // ── Regenerations display ──
+  let regenerationsRemaining: number;
+  let regenerationsLimit: number;
+  let regenerationsLabel: string;
+
+  if (subscription.plan === 'free') {
+    // Free tier: show regenerations_count against maxRegenerations (2, lifetime)
+    regenerationsRemaining = Math.max(0, limits.maxRegenerations - usage.regenerationsCount);
+    regenerationsLimit = limits.maxRegenerations;
+    regenerationsLabel = `${regenerationsRemaining}/${regenerationsLimit} regenerations left`;
+  } else {
+    const isUnlimited = limits.regenerationsPerDay >= 999;
+    regenerationsRemaining = isUnlimited ? 999 : Math.max(0, limits.regenerationsPerDay - usage.regenerationsUsedToday);
+    regenerationsLimit = limits.regenerationsPerDay;
+    regenerationsLabel = isUnlimited ? 'unlimited' : `${regenerationsRemaining}/${regenerationsLimit} today`;
+  }
+  
+  const isFreePlan = subscription.plan === 'free';
   
   return {
     plan: subscription.plan,
-    planLabel: getPlanLabel(subscription.plan),
+    planLabel: getEffectivePlanLabel(subscription),
     generationsRemaining,
     generationsLimit,
     generationsLabel,
     regenerationsRemaining,
     regenerationsLimit,
     regenerationsLabel,
-    generationsResetIn: subscription.plan !== 'free' ? formatResetDate(usage.monthResetDate) : undefined,
-    regenerationsResetIn: !isUnlimited ? formatTimeUntil(usage.dayResetDate) : undefined,
+    generationsResetIn: !isFreePlan ? formatResetDate(usage.monthResetDate) : undefined,
+    regenerationsResetIn: !isFreePlan && limits.regenerationsPerDay < 999
+      ? formatTimeUntil(usage.dayResetDate)
+      : undefined,
     canUpgrade: subscription.plan !== 'lifetime',
-    upgradeReason: subscription.plan === 'free' ? 'Get more generations & features' : undefined,
+    upgradeReason: isFreePlan ? 'Unlock more generations & features' : undefined,
   };
 }
 
@@ -349,13 +478,18 @@ export function createDefaultSubscription(userId: string): UserSubscription {
     id: crypto.randomUUID(),
     userId,
     plan: 'free',
+    isAdmin: false,
     status: 'active',
     usage: {
+      // Paid plan tracking
       generationsUsedThisMonth: 0,
-      generationsUsedTotal: 0,
       monthResetDate: nextMonth,
       regenerationsUsedToday: 0,
       dayResetDate: tomorrow,
+      // Free tier split tracking
+      newGenerationsCount: 0,   // New portfolios created (max 1)
+      regenerationsCount: 0,    // Regenerations used (max 2)
+      generationsUsedTotal: 0,  // Legacy field (kept for compatibility)
       portfolioCount: 0,
     },
     createdAt: now,
