@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getCurrentSession } from "@/lib/auth/session";
 import { ChatInterface } from "@/features/chat/components/chat-interface";
 import { getSubscription } from "@/infrastructure/repositories/subscription-repository";
-import { PLAN_LIMITS } from "@/domain/entities/subscription";
+import { canGenerate } from "@/domain/entities/subscription";
 
 export const metadata = {
   title: "Create Portfolio | FolioAI",
@@ -28,15 +28,11 @@ export default async function NewChatPage() {
    * This prevents users from bypassing the UI restriction by navigating
    * directly to /chat/new.
    */
-  const subscription = await getSubscription(session.user.id);
-  const limits = PLAN_LIMITS[subscription.plan];
+  const subscription = await getSubscription(session.user.id, session.user.email);
+  const generationAccess = canGenerate(subscription);
 
-  if (subscription.plan === "free") {
-    // Free tier: max 1 new portfolio generation (lifetime)
-    if (subscription.usage.newGenerationsCount >= limits.maxNewGenerations) {
-      // Redirect to dashboard with upgrade prompt flag
-      redirect("/dashboard?upgrade=new_generation_limit");
-    }
+  if (!generationAccess.allowed) {
+    redirect("/dashboard?upgrade=new_generation_limit");
   }
   // Paid plans are checked server-side at the API layer; the UI is always accessible.
 

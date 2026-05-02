@@ -19,12 +19,13 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    const subscription = await getSubscription(session.user.id);
+    const subscription = await getSubscription(session.user.id, session.user.email);
     const usage = getUsageDisplay(subscription);
     
     return NextResponse.json({
       subscription: {
         plan: subscription.plan,
+        isAdmin: !!subscription.isAdmin,
         status: subscription.status,
         currentPeriodEnd: subscription.currentPeriodEnd,
       },

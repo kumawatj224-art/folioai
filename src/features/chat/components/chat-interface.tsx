@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { ChatMessage, StudentInfo } from "@/domain/entities/chat";
 import { Button } from "@/components/ui/button";
+import { supportsCustomSubdomain } from "@/domain/entities/subscription";
 
 // Icons as components for cleaner code
 const IconExpand = () => (
@@ -262,31 +263,44 @@ export function ChatInterface({
   const deployPortfolio = async () => {
     if (!generatedHtml) return;
     
-    // Ask for subdomain name
-    const defaultName = studentInfo.name 
-      ? studentInfo.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-      : "";
-    
-    const subdomainInput = window.prompt(
-      "Enter your subdomain name (e.g., 'jai' for jai.getfolioai.in):",
-      defaultName
-    );
-    
-    if (subdomainInput === null) {
-      // User cancelled
-      return;
-    }
-    
-    // Validate and clean subdomain
-    const subdomain = subdomainInput
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 30);
-    
-    if (!subdomain) {
-      setError("Please enter a valid subdomain name");
-      return;
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
+    let customSubdomain: string | undefined;
+
+    try {
+      const subscriptionResponse = await fetch("/api/subscription", { cache: "no-store" });
+      if (subscriptionResponse.ok) {
+        const subscriptionData = await subscriptionResponse.json();
+        const plan = subscriptionData?.subscription?.plan;
+        const isAdmin = Boolean(subscriptionData?.subscription?.isAdmin);
+
+        if (isAdmin || (plan && supportsCustomSubdomain(plan))) {
+          const defaultName = studentInfo.name 
+            ? studentInfo.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+            : "";
+          
+          const subdomainInput = window.prompt(
+            `Enter your subdomain name (e.g., 'jai' for jai.${rootDomain}):`,
+            defaultName
+          );
+
+          if (subdomainInput === null) {
+            return;
+          }
+
+          customSubdomain = subdomainInput
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 30);
+
+          if (!customSubdomain) {
+            setError("Please enter a valid subdomain name");
+            return;
+          }
+        }
+      }
+    } catch {
+      // Fall back to server-side plan enforcement if subscription lookup fails.
     }
     
     setIsDeploying(true);
@@ -308,8 +322,11 @@ export function ChatInterface({
         htmlContent: generatedHtml,
         chatHistory: messages,
         status: "deployed",
-        customSubdomain: subdomain, // Send user's chosen subdomain
       };
+
+      if (customSubdomain) {
+        body.customSubdomain = customSubdomain;
+      }
       
       // Only include title for new portfolios
       if (!isEditing) {
@@ -340,9 +357,9 @@ export function ChatInterface({
       
       // For localhost, show the local test URL instead of production subdomain
       if (host.includes("localhost")) {
-        // Extract subdomain from liveUrl (e.g., https://jai.getfolioai.in -> jai)
-        const slugMatch = portfolio.liveUrl?.match(/https?:\/\/([^.]+)\.getfolioai\.in/);
-        const slug = slugMatch ? slugMatch[1] : subdomain;
+        const escapedRootDomain = rootDomain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const slugMatch = portfolio.liveUrl?.match(new RegExp(`https?:\\/\\/([^.]+)\\.${escapedRootDomain}`));
+        const slug = slugMatch ? slugMatch[1] : customSubdomain;
         deployUrl = `${window.location.origin}/api/p/${slug}`;
       }
       
@@ -494,6 +511,12 @@ export function ChatInterface({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isEditMode && generatedHtml && (
+              <Button size="sm" variant="secondary" onClick={generatePortfolio} disabled={isLoading}>
+                {isLoading ? "Regenerating..." : "Regenerate"}
+              </Button>
+            )}
+
             {/* New portfolio: Show Generate when ready */}
             {!isEditMode && readyToGenerate && !generatedHtml && (
               <Button size="sm" onClick={generatePortfolio} disabled={isLoading}>
@@ -613,13 +636,13 @@ export function ChatInterface({
           </div>
         )}
 
-        {/* Regenerate CTA - Shows in edit mode when there are changes */}
-        {isEditMode && hasChanges && (
+        {/* Regenerate CTA - Always available in edit mode */}
+        {isEditMode && generatedHtml && (
           <div className="mx-4 mb-3 rounded-xl border border-[#3b82f6]/30 bg-gradient-to-r from-[#3b82f6]/10 to-[#60a5fa]/10 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-[#f0ece4]">Ready to update your portfolio</p>
-                <p className="text-xs text-[#a0a0a0]">New changes detected</p>
+                <p className="text-xs text-[#a0a0a0]">{hasChanges ? "New changes detected" : "Regenerate the current design with your saved data"}</p>
               </div>
               <button
                 onClick={generatePortfolio}

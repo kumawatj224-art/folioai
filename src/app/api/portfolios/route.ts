@@ -7,9 +7,9 @@ import { userRepository } from "@/infrastructure/repositories/user-repository";
 import {
   getSubscription,
   recordGeneration,
-  isAdminEmail,
 } from "@/infrastructure/repositories/subscription-repository";
-import { PLAN_LIMITS } from "@/domain/entities/subscription";
+import { supportsCustomSubdomainForSubscription } from "@/domain/entities/subscription";
+import { validatePortfolioHtml } from "@/lib/utils/portfolio-html";
 import type { ChatMessage, PortfolioStatus } from "@/domain/entities/chat";
 
 /**
@@ -70,6 +70,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const htmlValidation = validatePortfolioHtml(body.htmlContent);
+    if (htmlValidation.violations.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Generated portfolio HTML contains product/editor UI and must be regenerated.",
+          details: htmlValidation.violations,
+        },
+        { status: 400 }
+      );
+    }
+
     // Ensure user exists in database before creating portfolio
     const dbUser = await userRepository.ensureUser({
       id: session.user.id,
@@ -91,19 +102,19 @@ export async function POST(request: NextRequest) {
     const portfolio = await chatPortfolioRepository.create({
       userId: dbUser.id,
       title: body.title,
-      htmlContent: body.htmlContent,
+      htmlContent: htmlValidation.sanitizedHtml,
       chatHistory: body.chatHistory || [],
     });
 
     // If status is "deployed", determine the slug based on subscription tier
     if (body.status === "deployed") {
       const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
-      const subscription = await getSubscription(session.user.id);
-      const isPaidUser = subscription.plan !== "free";
+      const subscription = await getSubscription(session.user.id, session.user.email);
+      const canUseCustomSubdomain = supportsCustomSubdomainForSubscription(subscription);
 
       let slug: string;
 
-      if (isPaidUser) {
+      if (canUseCustomSubdomain) {
         // Paid users: allow custom subdomain input or derive from title
         if (body.customSubdomain) {
           slug = toDnsLabel(body.customSubdomain);
@@ -117,9 +128,9 @@ export async function POST(request: NextRequest) {
       } else {
         /**
          * FREE TIER DOMAIN ENFORCEMENT
-         * Format: ai[first 8 chars of portfolio_id].[domain]
+         * Format: ai[first 6 chars of portfolio_id].[domain]
          */
-        const portfolioIdPrefix = portfolio.id.replace(/-/g, "").slice(0, 8);
+        const portfolioIdPrefix = portfolio.id.replace(/-/g, "").slice(0, 6);
         slug = `ai${portfolioIdPrefix}`;
       }
       

@@ -14,6 +14,8 @@ import type {
 import { 
   createDefaultSubscription,
   PLAN_LIMITS,
+  canGenerate,
+  canRegenerate,
 } from "@/domain/entities/subscription";
 
 // Get Supabase client
@@ -28,37 +30,66 @@ const CACHE_TTL = 60 * 1000; // 1 minute cache
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * Check if an email is an admin (bypasses all limits)
- * Set ADMIN_EMAILS in .env.local as comma-separated emails
- * Example: ADMIN_EMAILS=admin@example.com,me@mysite.com
+ * Parse a comma-separated env allowlist into normalized values.
  */
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  
-  const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  const isAdmin = adminEmails.includes(email.toLowerCase());
-  
+function parseAdminList(value: string | undefined, normalize: (entry: string) => string): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((entry) => normalize(entry.trim()))
+    .filter(Boolean);
+}
+
+/**
+ * Check if a user is allowlisted as admin.
+ *
+ * Supported env vars:
+ * - ADMIN_USER_IDS=user-id-1,user-id-2
+ * - ADMIN_EMAILS=admin@example.com,owner@example.com
+ */
+export function isAdminUser(userId?: string | null, email?: string | null): boolean {
+  const adminUserIds = parseAdminList(process.env.ADMIN_USER_IDS, (entry) => entry);
+  const adminEmails = parseAdminList(process.env.ADMIN_EMAILS, (entry) => entry.toLowerCase());
+
+  const normalizedUserId = userId ?? "";
+  const normalizedEmail = email?.toLowerCase() ?? "";
+
+  const matchedById = normalizedUserId.length > 0 && adminUserIds.includes(normalizedUserId);
+  const matchedByEmail = normalizedEmail.length > 0 && adminEmails.includes(normalizedEmail);
+  const isAdmin = matchedById || matchedByEmail;
+
   if (isAdmin) {
-    console.log('[Subscription] Admin bypass active for:', email);
+    console.log("[Subscription] Admin override active", { userId, email });
   }
-  
+
   return isAdmin;
+}
+
+function elevateAdminSubscription(subscription: UserSubscription): UserSubscription {
+  return {
+    ...subscription,
+    isAdmin: true,
+    status: 'active',
+  };
 }
 
 /**
  * Get or create subscription for user
  */
-export async function getSubscription(userId: string): Promise<UserSubscription> {
+export async function getSubscription(userId: string, userEmail?: string | null): Promise<UserSubscription> {
+  const adminOverride = isAdminUser(userId, userEmail);
+
   // Skip database if Supabase not configured
   if (!isSupabaseConfigured()) {
     console.log('[Subscription] Supabase not configured, using default');
-    return createDefaultSubscription(userId);
+    const defaultSubscription = createDefaultSubscription(userId);
+    return adminOverride ? elevateAdminSubscription(defaultSubscription) : defaultSubscription;
   }
 
   // Check cache first
   const cached = subscriptionCache.get(userId);
   if (cached && Date.now() < cached.expiresAt) {
-    return resetCountersIfNeeded(cached.data);
+    const subscription = resetCountersIfNeeded(cached.data);
+    return adminOverride ? elevateAdminSubscription(subscription) : subscription;
   }
   
   // Fetch from Supabase (maybeSingle returns null for 0 rows without error)
@@ -75,7 +106,8 @@ export async function getSubscription(userId: string): Promise<UserSubscription>
     } else {
       console.error('[Subscription] DB error:', error.message);
     }
-    return createDefaultSubscription(userId);
+    const fallback = createDefaultSubscription(userId);
+    return adminOverride ? elevateAdminSubscription(fallback) : fallback;
   }
   
   if (!data) {
@@ -83,7 +115,7 @@ export async function getSubscription(userId: string): Promise<UserSubscription>
     const defaultSub = createDefaultSubscription(userId);
     await createSubscriptionInDb(defaultSub);
     subscriptionCache.set(userId, { data: defaultSub, expiresAt: Date.now() + CACHE_TTL });
-    return defaultSub;
+    return adminOverride ? elevateAdminSubscription(defaultSub) : defaultSub;
   }
   
   // Map database row to domain type
@@ -96,7 +128,7 @@ export async function getSubscription(userId: string): Promise<UserSubscription>
   }
   
   subscriptionCache.set(userId, { data: updated, expiresAt: Date.now() + CACHE_TTL });
-  return updated;
+  return adminOverride ? elevateAdminSubscription(updated) : updated;
 }
 
 /**
@@ -157,6 +189,7 @@ function mapDbToSubscription(row: Record<string, unknown>): UserSubscription {
     id: row.id as string,
     userId: row.user_id as string,
     plan: row.plan as PlanType,
+    isAdmin: false,
     status: row.status as 'active' | 'cancelled' | 'expired' | 'past_due',
     usage: {
       generationsUsedThisMonth: (row.generations_used_this_month as number) || 0,
@@ -230,8 +263,8 @@ export async function recordGeneration(userId: string, userEmail?: string | null
   const limits = PLAN_LIMITS[subscription.plan];
   
   // Admin bypass - no limits
-  if (isAdminEmail(userEmail)) {
-    console.log('[Subscription] ADMIN: Bypassing new-generation limit for', userEmail);
+  if (isAdminUser(userId, userEmail)) {
+    console.log('[Subscription] ADMIN: Bypassing new-generation limit for', userEmail ?? userId);
     return { allowed: true, subscription };
   }
   
@@ -307,8 +340,8 @@ export async function recordRegeneration(userId: string, userEmail?: string | nu
   const limits = PLAN_LIMITS[subscription.plan];
   
   // Admin bypass - no limits
-  if (isAdminEmail(userEmail)) {
-    console.log('[Subscription] ADMIN: Bypassing regeneration limit for', userEmail);
+  if (isAdminUser(userId, userEmail)) {
+    console.log('[Subscription] ADMIN: Bypassing regeneration limit for', userEmail ?? userId);
     return { allowed: true, subscription };
   }
   

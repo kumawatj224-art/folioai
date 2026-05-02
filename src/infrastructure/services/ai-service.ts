@@ -20,7 +20,7 @@
 
 import { AzureOpenAI } from "openai";
 import type { ChatMessage, StudentInfo, PortfolioTemplate } from "@/domain/entities/chat";
-import { getRandomReferenceTemplate, TEMPLATE_STYLES } from "@/data/reference-templates";
+import { getReferenceTemplate, TEMPLATE_STYLES } from "@/data/reference-templates";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // CONFIGURATION - Separate endpoints for chat & generation
@@ -234,6 +234,46 @@ function analyzeStudentData(studentInfo: Partial<StudentInfo>) {
   };
 }
 
+function selectProfileAwareTemplate(
+  analysis: ReturnType<typeof analyzeStudentData>,
+  studentInfo: Partial<StudentInfo>
+): string {
+  const skills = (studentInfo.skills || []).join(" ").toLowerCase();
+  const internships = studentInfo.internships || [];
+  const internshipText = internships
+    .map((internship) => `${internship.company} ${internship.role} ${internship.description}`.toLowerCase())
+    .join(" ");
+  const projectsText = (studentInfo.projects || [])
+    .map((project) => `${project.title} ${project.description} ${(project.techStack || []).join(" ")}`.toLowerCase())
+    .join(" ");
+
+  if (analysis.isExperienced) {
+    if (/(azure|aws|ml|machine learning|ai|data|cloud|platform)/.test(`${skills} ${internshipText}`)) {
+      return "enterprise-dark";
+    }
+
+    if (analysis.projectCount >= 3 || /(product|frontend|react|full.?stack)/.test(`${skills} ${projectsText}`)) {
+      return "brutalist";
+    }
+
+    return "enterprise-dark";
+  }
+
+  if (/(android|ios|flutter|react native|mobile)/.test(`${skills} ${projectsText}`)) {
+    return "gradient-dark";
+  }
+
+  if (/(full.?stack|react|next|node|frontend|backend)/.test(`${skills} ${projectsText}`)) {
+    return "brutalist";
+  }
+
+  if (/(data|analytics|sql|python|power bi|tableau|machine learning|ai)/.test(`${skills} ${projectsText}`)) {
+    return "enterprise-dark";
+  }
+
+  return analysis.projectCount <= 1 ? "enterprise-dark" : "gradient-dark";
+}
+
 /**
  * Builds dynamic sections instructions based on user data
  */
@@ -304,14 +344,17 @@ function buildDynamicSectionsPrompt(studentInfo: Partial<StudentInfo>, analysis:
 
 /**
  * Builds the complete generation prompt dynamically based on student data
- * Randomly selects one of 3 reference templates for variety
+ * Selects a profile-aware reference template for consistency
  */
 function buildGenerationPrompt(studentInfo: Partial<StudentInfo>, template: PortfolioTemplate): string {
   const analysis = analyzeStudentData(studentInfo);
-  
-  // Randomly select one of the 3 reference templates
-  const { name: selectedTemplate, reference: referenceTemplate } = getRandomReferenceTemplate();
+
+  const requestedTemplate = template !== "minimal-warm" ? template : null;
+  const selectedTemplate = requestedTemplate ?? selectProfileAwareTemplate(analysis, studentInfo);
+  const referenceTemplate = getReferenceTemplate(selectedTemplate);
   const templateStyle = TEMPLATE_STYLES[selectedTemplate] || TEMPLATE_STYLES['enterprise-dark'];
+
+  console.log(`[Reference Template] Selected: ${selectedTemplate} (requested: ${template ?? "none"})`);
   
   return `Generate a complete, production-ready portfolio website as a single HTML file.
 
@@ -321,7 +364,7 @@ ${JSON.stringify(studentInfo, null, 2)}
 \`\`\`
 
 **PROFILE TYPE:** ${analysis.isExperienced ? '👔 EXPERIENCED PROFESSIONAL' : '🎓 STUDENT/FRESHER'}
-**SELECTED TEMPLATE:** ${selectedTemplate} (randomly chosen from 3 references)
+**SELECTED TEMPLATE:** ${selectedTemplate} (profile-aware selection)
 **STYLE:** ${templateStyle.description}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -404,6 +447,18 @@ TECHNICAL REQUIREMENTS
 - html { scroll-behavior: smooth }
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FACTUAL ANCHORING - MANDATORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Every visible number, date, metric, employer, and achievement claim in the final portfolio must be grounded in USER DATA.
+- If the user did not mention a fact, do not invent it.
+- You may rewrite tone and phrasing professionally, but you may not upgrade scope or seniority.
+- Do not turn rough or partial input into inflated claims like production ownership, scale, revenue impact, recruiter interest, or team leadership unless explicitly present.
+- If a profile has limited data, stay specific and minimal rather than filling gaps with generic achievements.
+- Keep project descriptions and experience descriptions literal to the provided evidence.
+- Avoid filler claims such as "passionate developer", "tech enthusiast", "results-driven", or other resume cliches.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -420,6 +475,9 @@ CRITICAL RULES
 - Use generic phrases ("passionate developer", "tech enthusiast")
 - Include sections that have no data (e.g., Experience if internships is empty)
 - Use fonts/colors outside the template specification
+- Include dashboard/editor/product UI inside the portfolio HTML
+- Include controls or text such as "Upload Resume", "Generate Portfolio", "Regenerate", "Save Draft", "Save Changes", "Deploy", "Message FolioAI", or any admin/editor CTA
+- Add placeholder upload boxes, file-upload widgets, dashboard cards, or app shell UI to any section
 - Generate fewer than 8000 tokens of HTML
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1039,6 +1097,11 @@ export async function generatePortfolioHtml(
   if (existingHtml) {
     prompt += `\n\n**EDITING MODE - Reference Portfolio:**
 The user is editing their existing portfolio. Apply the changes they requested in the conversation while preserving the overall structure and styling. Here's their current portfolio:\n\`\`\`html\n${existingHtml.substring(0, 6000)}${existingHtml.length > 6000 ? '\n... (truncated)' : ''}\n\`\`\``;
+
+    prompt += `\n\n**STRICT EDITING CONSTRAINTS:**
+- Remove any accidental dashboard/editor/app UI if it appears in the reference HTML
+- The final portfolio must NOT contain upload prompts, resume buttons, chat controls, generation buttons, deploy buttons, or app navigation
+- If you see text like "Upload Resume" in the reference HTML, treat it as contamination and remove it from the final output`;
     
     // Add conversation context to understand what changes were requested
     if (chatMessages && chatMessages.length > 0) {

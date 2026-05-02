@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
 import { getSubscription } from "@/infrastructure/repositories/subscription-repository";
+import { supportsCustomSubdomainForSubscription } from "@/domain/entities/subscription";
 
 type DeployRequestBody = {
   portfolioId: string;
@@ -65,12 +66,12 @@ export async function POST(request: NextRequest) {
 
     // ── Domain Naming Logic ──────────────────────────────────────────
     const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
-    const subscription = await getSubscription(session.user.id);
-    const isPaidUser = subscription.plan !== "free";
+    const subscription = await getSubscription(session.user.id, session.user.email);
+    const canUseCustomSubdomain = supportsCustomSubdomainForSubscription(subscription);
 
     let slug: string;
 
-    if (isPaidUser) {
+    if (canUseCustomSubdomain) {
       // Paid users: derive slug from portfolio title (custom / human-readable)
       const name = portfolio.title.replace(/'s Portfolio$/i, "").trim();
       slug = toDnsLabel(name) || toDnsLabel(`portfolio-${Date.now().toString(36)}`);
@@ -79,9 +80,9 @@ export async function POST(request: NextRequest) {
     } else {
       /**
        * Free users: force portfolio-based subdomain.
-       * Format: ai[first 8 chars of portfolio_id].[domain]
+       * Format: ai[first 6 chars of portfolio_id].[domain]
        */
-      const portfolioIdPrefix = portfolioId.replace(/-/g, "").slice(0, 8);
+      const portfolioIdPrefix = portfolioId.replace(/-/g, "").slice(0, 6);
       slug = `ai${portfolioIdPrefix}`;
     }
 

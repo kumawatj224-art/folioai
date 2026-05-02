@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
+import { sanitizePortfolioHtml } from "@/lib/utils/portfolio-html";
 
 type RouteParams = {
   params: Promise<{ slug: string }>;
@@ -14,6 +15,7 @@ type RouteParams = {
 export async function GET(request: Request, { params }: RouteParams) {
   const { slug } = await params;
   const url = new URL(request.url);
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
   
   console.log("[api/p] Request for slug:", slug, "host:", request.headers.get("host"), "url:", url.pathname);
   
@@ -50,7 +52,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   <div class="container">
     <h1>404</h1>
     <p>This portfolio doesn't exist or hasn't been published yet.</p>
-    <a href="https://getfolioai.in">Create your portfolio with FolioAI</a>
+    <a href="https://${rootDomain}">Create your portfolio with FolioAI</a>
   </div>
 </body>
 </html>`,
@@ -62,7 +64,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   // Return raw HTML with proper headers
-  return new NextResponse(portfolio.htmlContent, {
+  return new NextResponse(sanitizePortfolioHtml(portfolio.htmlContent), {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",

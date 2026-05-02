@@ -68,8 +68,7 @@ export async function POST(request: NextRequest) {
 
       // Check usage limits
       const isEditMode = !!existingHtml;
-      const subscription = await getSubscription(session.user.id);
-      const userEmail = session.user.email;
+      const subscription = await getSubscription(session.user.id, session.user.email);
       
       if (isEditMode) {
         // Regeneration - check daily limit WITHOUT updating
@@ -111,7 +110,7 @@ export async function POST(request: NextRequest) {
       );
       
       // Get updated usage after generation
-      const updatedSubscription = await getSubscription(session.user.id);
+      const updatedSubscription = await getSubscription(session.user.id, session.user.email);
       const usage = getUsageDisplay(updatedSubscription);
       
       return NextResponse.json({ html, usage });
@@ -123,7 +122,7 @@ export async function POST(request: NextRequest) {
     const readyToGenerate = isReadyToGenerate(updatedInfo);
     
     // Get current usage for UI
-    const subscription = await getSubscription(session.user.id);
+    const subscription = await getSubscription(session.user.id, session.user.email);
     const usage = getUsageDisplay(subscription);
 
     return NextResponse.json({

@@ -241,8 +241,8 @@ const supabasePortfolioRepository = {
     const supabase = getSupabaseServer();
     
     // Since slug column may not exist, search by live_url pattern
-    // live_url format: https://{slug}.getfolioai.in
-    const liveUrlPattern = `https://${slug}.getfolioai.in`;
+      // live_url format: https://{slug}.getfolioai.in or https://{slug}.ppe.getfolioai.in
+      const liveUrlPattern = `https://${slug}.%getfolioai.in`;
     
     console.log("[findBySlug] Looking for slug:", slug, "with live_url:", liveUrlPattern);
     
@@ -251,7 +251,7 @@ const supabasePortfolioRepository = {
     const { data, error } = await supabase
       .from("portfolios")
       .select("*")
-      .eq("live_url", liveUrlPattern)
+        .ilike("live_url", liveUrlPattern)
       .eq("status", "deployed")
       .order("updated_at", { ascending: false })
       .limit(1);

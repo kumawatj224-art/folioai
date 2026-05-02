@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { chatPortfolioRepository, type UpdatePortfolioInput } from "@/infrastructure/repositories/portfolio-repository";
 import { getSubscription, recordRegeneration } from "@/infrastructure/repositories/subscription-repository";
+import { supportsCustomSubdomainForSubscription } from "@/domain/entities/subscription";
+import { validatePortfolioHtml } from "@/lib/utils/portfolio-html";
 
 /**
  * Sanitize a string into a valid DNS subdomain label.
@@ -75,6 +77,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const { title, htmlContent, liveUrl, status, chatHistory, customSubdomain } = body;
 
+    const htmlValidation = htmlContent !== undefined
+      ? validatePortfolioHtml(String(htmlContent))
+      : null;
+
+    if (htmlValidation && htmlValidation.violations.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Generated portfolio HTML contains product/editor UI and must be regenerated.",
+          details: htmlValidation.violations,
+        },
+        { status: 400 }
+      );
+    }
+
     // Record the usage AFTER verifying user/payload to consume 1 regeneration limit
     // We only deduct if they actually changed content/deployed, not just normal viewing
     if (htmlContent || chatHistory) {
@@ -93,7 +109,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Update fields if provided
     const updates: UpdatePortfolioInput = {};
     if (title !== undefined) updates.title = title;
-    if (htmlContent !== undefined) updates.htmlContent = htmlContent;
+    if (htmlValidation) updates.htmlContent = htmlValidation.sanitizedHtml;
     if (status !== undefined) updates.status = status;
     if (chatHistory !== undefined) updates.chatHistory = chatHistory;
 
@@ -101,12 +117,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (status === "deployed") {
       // ── Domain Naming Logic ───────────────────────────────────────
       const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "getfolioai.in";
-      const subscription = await getSubscription(session.user.id);
-      const isPaidUser = subscription.plan !== "free";
+      const subscription = await getSubscription(session.user.id, session.user.email);
+      const canUseCustomSubdomain = supportsCustomSubdomainForSubscription(subscription);
 
       let slug: string;
 
-      if (isPaidUser) {
+      if (canUseCustomSubdomain) {
         // Paid users: allow custom subdomain input or derive from portfolio title
         if (customSubdomain) {
           slug = toDnsLabel(customSubdomain);
@@ -120,9 +136,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       } else {
         /**
          * FREE TIER DOMAIN ENFORCEMENT
-         * Format: ai[first 8 chars of portfolio_id].[domain]
+         * Format: ai[first 6 chars of portfolio_id].[domain]
          */
-        const portfolioIdPrefix = id.replace(/-/g, "").slice(0, 8);
+        const portfolioIdPrefix = id.replace(/-/g, "").slice(0, 6);
         slug = `ai${portfolioIdPrefix}`;
       }
       // ───────────────────────────────────────────────────────────────────────

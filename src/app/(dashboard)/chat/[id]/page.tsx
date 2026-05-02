@@ -6,7 +6,7 @@ import { ChatInterface } from "@/features/chat/components/chat-interface";
 import { LiveUrlLink } from "@/components/ui/live-url-link";
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
 import { getSubscription } from "@/infrastructure/repositories/subscription-repository";
-import { PLAN_LIMITS } from "@/domain/entities/subscription";
+import { canRegenerate } from "@/domain/entities/subscription";
 import type { ChatMessage } from "@/domain/entities/chat";
 
 type PageProps = {
@@ -47,13 +47,11 @@ export default async function EditChatPage({ params }: PageProps) {
    *
    * This prevents bypass via direct URL navigation to /chat/[id].
    */
-  const subscription = await getSubscription(session.user.id);
-  const limits = PLAN_LIMITS[subscription.plan];
+  const subscription = await getSubscription(session.user.id, session.user.email);
+  const regenerationAccess = canRegenerate(subscription);
 
-  if (subscription.plan === "free") {
-    if (subscription.usage.regenerationsCount >= limits.maxRegenerations) {
-      redirect("/dashboard?upgrade=regeneration_limit");
-    }
+  if (!regenerationAccess.allowed) {
+    redirect("/dashboard?upgrade=regeneration_limit");
   }
 
   // Get chat history or create initial message with context

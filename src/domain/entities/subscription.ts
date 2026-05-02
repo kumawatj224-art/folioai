@@ -80,6 +80,7 @@ export type UserSubscription = {
   id: string;
   userId: string;
   plan: PlanType;
+  isAdmin?: boolean;
   status: SubscriptionStatus;
   
   // Usage
@@ -211,6 +212,26 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   },
 };
 
+const ADMIN_PLAN_LIMITS: PlanLimits = {
+  plan: 'lifetime',
+  generationsPerMonth: 999999,
+  maxNewGenerations: 999999,
+  maxRegenerations: 999999,
+  regenerationsPerDay: 999999,
+  hasSubdomain: true,
+  maxCustomDomains: 999999,
+  maxPortfolios: 999999,
+  hasBasicAnalytics: true,
+  hasAdvancedAnalytics: true,
+  showBranding: false,
+  brandingSize: 'none',
+  hasPrioritySupport: true,
+  hasGithubSync: true,
+  priceMonthly: 0,
+  priceYearly: 0,
+  priceLifetime: 0,
+};
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // HELPER FUNCTIONS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -229,13 +250,29 @@ export function getPlanLimits(plan: PlanType): PlanLimits {
   return PLAN_LIMITS[plan];
 }
 
+export function getEffectivePlanLimits(subscription: UserSubscription): PlanLimits {
+  return subscription.isAdmin ? ADMIN_PLAN_LIMITS : PLAN_LIMITS[subscription.plan];
+}
+
+export function getEffectivePlanLabel(subscription: UserSubscription): string {
+  return subscription.isAdmin ? 'Admin' : getPlanLabel(subscription.plan);
+}
+
+export function supportsCustomSubdomain(plan: PlanType): boolean {
+  return PLAN_LIMITS[plan].maxCustomDomains > 0;
+}
+
+export function supportsCustomSubdomainForSubscription(subscription: UserSubscription): boolean {
+  return getEffectivePlanLimits(subscription).maxCustomDomains > 0;
+}
+
 export function canCreatePortfolio(subscription: UserSubscription): { allowed: boolean; reason?: string } {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   
   if (subscription.usage.portfolioCount >= limits.maxPortfolios) {
     return { 
       allowed: false, 
-      reason: `You've reached the maximum of ${limits.maxPortfolios} portfolio${limits.maxPortfolios > 1 ? 's' : ''} on the ${getPlanLabel(subscription.plan)} plan.` 
+      reason: `You've reached the maximum of ${limits.maxPortfolios} portfolio${limits.maxPortfolios > 1 ? 's' : ''} on the ${getEffectivePlanLabel(subscription)} plan.` 
     };
   }
   
@@ -249,8 +286,12 @@ export function canCreatePortfolio(subscription: UserSubscription): { allowed: b
  * Paid plans: limited by generationsPerMonth (monthly reset).
  */
 export function canGenerate(subscription: UserSubscription): { allowed: boolean; reason?: string } {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   const usage = subscription.usage;
+
+  if (subscription.isAdmin) {
+    return { allowed: true };
+  }
   
   if (subscription.plan === 'free') {
     // Free tier: check new_generations_count (max 1, lifetime)
@@ -280,8 +321,12 @@ export function canGenerate(subscription: UserSubscription): { allowed: boolean;
  * Paid plans: limited by regenerationsPerDay (daily reset; 999 = unlimited).
  */
 export function canRegenerate(subscription: UserSubscription): { allowed: boolean; reason?: string; resetIn?: string } {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   const usage = subscription.usage;
+
+  if (subscription.isAdmin) {
+    return { allowed: true };
+  }
   
   if (subscription.plan === 'free') {
     // Free tier: check lifetime regenerations_count (max 2, never resets)
@@ -313,8 +358,22 @@ export function canRegenerate(subscription: UserSubscription): { allowed: boolea
 }
 
 export function getUsageDisplay(subscription: UserSubscription): UsageDisplay {
-  const limits = PLAN_LIMITS[subscription.plan];
+  const limits = getEffectivePlanLimits(subscription);
   const usage = subscription.usage;
+
+  if (subscription.isAdmin) {
+    return {
+      plan: subscription.plan,
+      planLabel: 'Admin',
+      generationsRemaining: 999999,
+      generationsLimit: 999999,
+      generationsLabel: 'unlimited',
+      regenerationsRemaining: 999999,
+      regenerationsLimit: 999999,
+      regenerationsLabel: 'unlimited',
+      canUpgrade: false,
+    };
+  }
   
   // ── Generations display ──
   let generationsRemaining: number;
@@ -355,7 +414,7 @@ export function getUsageDisplay(subscription: UserSubscription): UsageDisplay {
   
   return {
     plan: subscription.plan,
-    planLabel: getPlanLabel(subscription.plan),
+    planLabel: getEffectivePlanLabel(subscription),
     generationsRemaining,
     generationsLimit,
     generationsLabel,
@@ -419,6 +478,7 @@ export function createDefaultSubscription(userId: string): UserSubscription {
     id: crypto.randomUUID(),
     userId,
     plan: 'free',
+    isAdmin: false,
     status: 'active',
     usage: {
       // Paid plan tracking

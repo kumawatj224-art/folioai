@@ -15,7 +15,7 @@ export async function UsageBannerWrapper() {
     return null;
   }
   
-  const subscription = await getSubscription(session.user.id);
+  const subscription = await getSubscription(session.user.id, session.user.email);
   const usage = getUsageDisplay(subscription);
   
   return <UsageBanner usage={usage} />;
@@ -28,7 +28,7 @@ export async function CompactUsageBanner() {
     return null;
   }
   
-  const subscription = await getSubscription(session.user.id);
+  const subscription = await getSubscription(session.user.id, session.user.email);
   const usage = getUsageDisplay(subscription);
   
   return <UsageBanner usage={usage} compact />;

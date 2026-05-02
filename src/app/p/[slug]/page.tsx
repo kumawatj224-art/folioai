@@ -2,25 +2,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { chatPortfolioRepository } from "@/infrastructure/repositories/portfolio-repository";
+import { parsePortfolioHtml } from "@/lib/utils/portfolio-html";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
-
-/**
- * Extract styles and body content from complete HTML document
- */
-function parsePortfolioHtml(html: string) {
-  // Extract content inside <style> tags
-  const styleMatches = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
-  const styles = styleMatches.map(s => s.replace(/<\/?style[^>]*>/gi, "")).join("\n");
-  
-  // Extract content inside <body> tags, or use full HTML if no body tag
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  const bodyContent = bodyMatch ? bodyMatch[1] : html;
-  
-  return { styles, bodyContent };
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
